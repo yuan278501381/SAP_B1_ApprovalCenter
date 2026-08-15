@@ -90,9 +90,14 @@ public interface ISapMetadataService
     Task<CompanyInfoResult> GetCompanyInfoAsync(string companyId, CancellationToken ct = default);
 
     /// <summary>
-    /// 从 SAP 数据库 (CUFD/UFD1/无对象表) 获取单据及子表的所有动态字段中英文定义与下拉有效值描述字典
+    /// 从 SAP 数据库 (CUFD/UFD1/无对象表/系统字典) 获取单据及子表的所有动态字段中英文定义与下拉有效值描述字典 (多级缓存: 内存 -> 磁盘文件 -> 数据库)
     /// </summary>
-    Task<ObjectMetadataResult> GetObjectMetadataAsync(string companyId, string objectCode, CancellationToken ct = default);
+    Task<ObjectMetadataResult> GetObjectMetadataAsync(string companyId, string objectCode, bool forceRefresh = false, CancellationToken ct = default);
+
+    /// <summary>
+    /// 全量拉取 SAP 元数据与全系统字典 (OEXD, OSLP, OCTG, OHEM, OSTC, CUFD, UFD1) 并持久化序列化落盘 (供定时调度器与手动即时刷新调用)
+    /// </summary>
+    Task RefreshAllMetadataAndSaveToDiskAsync(string companyId, CancellationToken ct = default);
 }
 
 public interface ITraceContext

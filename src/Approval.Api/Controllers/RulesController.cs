@@ -47,12 +47,14 @@ public class RulesController : ControllerBase
     private readonly ApprovalDbContext _db;
     private readonly IWorkflowRuleMatcher _ruleMatcher;
     private readonly ITraceContext _traceContext;
+    private readonly ILogger<RulesController> _logger;
 
-    public RulesController(ApprovalDbContext db, IWorkflowRuleMatcher ruleMatcher, ITraceContext traceContext)
+    public RulesController(ApprovalDbContext db, IWorkflowRuleMatcher ruleMatcher, ITraceContext traceContext, ILogger<RulesController> logger)
     {
         _db = db;
         _ruleMatcher = ruleMatcher;
         _traceContext = traceContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -219,10 +221,17 @@ public class RulesController : ControllerBase
         }, _traceContext.TraceId));
     }
 
-    private static List<string> ParseList(string? json)
+    private List<string> ParseList(string? json)
     {
         if (string.IsNullOrWhiteSpace(json) || json == "[]") return new List<string>();
-        try { return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>(); }
-        catch { return new List<string>(); }
+        try 
+        { 
+            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>(); 
+        }
+        catch (Exception ex)
+        { 
+            _logger.LogWarning(ex, "JSON 反序列化候选列表失败，采用安全降级策略返回空集合: {Json}", json);
+            return new List<string>(); 
+        }
     }
 }

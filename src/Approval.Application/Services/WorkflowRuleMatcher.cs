@@ -387,7 +387,7 @@ public sealed class WorkflowRuleMatcher : IWorkflowRuleMatcher
         return false;
     }
 
-    private static bool EvaluateComparison(object? actualVal, string op, string targetVal)
+    public static bool EvaluateComparison(object? actualVal, string op, string targetVal)
     {
         if (actualVal == null) return false;
         var actualStr = actualVal.ToString()?.Trim() ?? string.Empty;
@@ -420,6 +420,16 @@ public sealed class WorkflowRuleMatcher : IWorkflowRuleMatcher
         if (op.Equals("CONTAINS", StringComparison.OrdinalIgnoreCase))
         {
             return actualStr.Contains(targetStr, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 字符串前缀与后缀比较 (STARTS_WITH / ENDS_WITH)
+        if (op.Equals("STARTS_WITH", StringComparison.OrdinalIgnoreCase) || op.Equals("STARTSWITH", StringComparison.OrdinalIgnoreCase))
+        {
+            return actualStr.StartsWith(targetStr, StringComparison.OrdinalIgnoreCase);
+        }
+        if (op.Equals("ENDS_WITH", StringComparison.OrdinalIgnoreCase) || op.Equals("ENDSWITH", StringComparison.OrdinalIgnoreCase))
+        {
+            return actualStr.EndsWith(targetStr, StringComparison.OrdinalIgnoreCase);
         }
 
         // 字符串全等比较

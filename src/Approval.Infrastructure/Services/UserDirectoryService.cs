@@ -32,7 +32,14 @@ public class UserDirectoryService : IUserDirectoryService
         {
             case CandidateType.Direct:
                 foreach (var code in rawValues)
-                    resolvedUsers.Add(code);
+                {
+                    var subCodes = code.Split(new[] { ';', ',', '|', '；', '，' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    foreach (var sc in subCodes)
+                    {
+                        if (!string.IsNullOrWhiteSpace(sc))
+                            resolvedUsers.Add(sc);
+                    }
+                }
                 break;
 
             case CandidateType.Manager:

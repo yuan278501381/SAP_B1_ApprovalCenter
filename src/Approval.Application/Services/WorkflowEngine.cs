@@ -15,7 +15,11 @@ namespace Approval.Application.Services;
 /// </summary>
 public class WorkflowEngine : IWorkflowEngine
 {
-    private static readonly JsonSerializerOptions GraphJsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions GraphJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
     private readonly IApprovalDbContext _db;
     private readonly ITraceContext _traceContext;
     private readonly IUserDirectoryService _userDirectoryService;

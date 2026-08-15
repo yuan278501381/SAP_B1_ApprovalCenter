@@ -54,4 +54,83 @@ public class CanonicalSnapshotTests
 
         originalSha.Should().NotBe(tamperedSha);
     }
+
+    [Fact]
+    public void Build_ShouldDetectTampering_WhenChildTableLineIsAddedOrRemoved()
+    {
+        var baseJson = """
+        {
+            "DocNum": 1001,
+            "DocumentLines": [
+                {"LineNum": 0, "ItemCode": "ITEM-01", "Price": 100.0, "Quantity": 10}
+            ]
+        }
+        """;
+
+        var lineAddedJson = """
+        {
+            "DocNum": 1001,
+            "DocumentLines": [
+                {"LineNum": 0, "ItemCode": "ITEM-01", "Price": 100.0, "Quantity": 10},
+                {"LineNum": 1, "ItemCode": "ITEM-02", "Price": 200.0, "Quantity": 5}
+            ]
+        }
+        """;
+
+        var (_, baseSha) = CanonicalSnapshotBuilder.Build(baseJson);
+        var (_, lineAddedSha) = CanonicalSnapshotBuilder.Build(lineAddedJson);
+
+        baseSha.Should().NotBe(lineAddedSha);
+    }
+
+    [Fact]
+    public void Build_ShouldDetectTampering_WhenChildTableFieldIsModified()
+    {
+        var originalJson = """
+        {
+            "DocNum": 1001,
+            "DocumentLines": [
+                {"LineNum": 0, "ItemCode": "ITEM-01", "Price": 100.0, "Quantity": 10}
+            ]
+        }
+        """;
+
+        var tamperedQuantityJson = """
+        {
+            "DocNum": 1001,
+            "DocumentLines": [
+                {"LineNum": 0, "ItemCode": "ITEM-01", "Price": 100.0, "Quantity": 11}
+            ]
+        }
+        """;
+
+        var (_, originalSha) = CanonicalSnapshotBuilder.Build(originalJson);
+        var (_, tamperedSha) = CanonicalSnapshotBuilder.Build(tamperedQuantityJson);
+
+        originalSha.Should().NotBe(tamperedSha);
+    }
+
+    [Theory]
+    [InlineData("true", "false")]
+    [InlineData("null", "{}")]
+    [InlineData("[]", "[1]")]
+    public void Build_ShouldDistinguishPrimitiveAndComplexTypes(string val1, string val2)
+    {
+        var json1 = $$"""{"test": {{val1}}}""";
+        var json2 = $$"""{"test": {{val2}}}""";
+
+        var (_, sha1) = CanonicalSnapshotBuilder.Build(json1);
+        var (_, sha2) = CanonicalSnapshotBuilder.Build(json2);
+
+        sha1.Should().NotBe(sha2);
+    }
+
+    [Fact]
+    public void Build_ShouldHandleEmptyAndWhitespaceJson_Gracefully()
+    {
+        var (canonical, sha) = CanonicalSnapshotBuilder.Build("{}");
+        canonical.Should().Be("{}");
+        sha.Should().NotBeNullOrWhiteSpace();
+        sha.Should().HaveLength(64);
+    }
 }

@@ -1,8 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Approval.Application.Common.Models;
 
 /// <summary>
 /// 从 SAP 抓取的单据规范数据包
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class SapObjectPayload
 {
     public string CompanyId { get; set; } = string.Empty;
@@ -20,6 +23,7 @@ public class SapObjectPayload
 /// <summary>
 /// 统一 API 响应包装体 (包含 TraceID 与结构化状态)
 /// </summary>
+[ExcludeFromCodeCoverage]
 public class ApiResponse<T>
 {
     public bool Success { get; set; }

@@ -434,11 +434,11 @@ const formatFieldValue = (key: string, val: any, childTableId?: string): { displ
   if (!validMap && metaData.value?.childTableFields) {
     const stripped = key.startsWith('U_') ? key.substring(2) : key
     for (const cMap of Object.values(metaData.value.childTableFields) as any[]) {
-      if (cMap?.[key]?.validValues) {
+      if (cMap?.[key]?.validValues && Object.keys(cMap[key].validValues).length > 0) {
         validMap = cMap[key].validValues
         break
       }
-      if (cMap?.[stripped]?.validValues) {
+      if (cMap?.[stripped]?.validValues && Object.keys(cMap[stripped].validValues).length > 0) {
         validMap = cMap[stripped].validValues
         break
       }
@@ -1460,7 +1460,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
             @click="openUnifiedCustomizationDrawer"
             title="统一配置对象主表属性、子表明细列、备注归集与关联字典显示模式"
           >
-            <SlidersHorizontal class="w-3.5 h-3.5 text-blue-600 mr-1.5" />
+            <SlidersHorizontal class="w-3 h-3 text-blue-600 mr-1" />
             <span>字段与列定制</span>
           </button>
         </div>
@@ -2235,6 +2235,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .btn-col-customize-pill {
   display: inline-flex;
   align-items: center;
+  gap: 0.3em;
   padding: 3px 8px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -2243,6 +2244,13 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   font-weight: 600;
   color: #1d4ed8;
   cursor: pointer;
+}
+
+.btn-col-customize-pill svg {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  vertical-align: -0.1em;
 }
 
 .btn-col-customize-pill:hover {

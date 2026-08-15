@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Approval.SapAdapter.ServiceLayer;
 
@@ -10,14 +11,16 @@ public sealed class ServiceLayerClient : IDisposable
 {
     private readonly ServiceLayerOptions _options;
     private readonly HttpClient _http;
+    private readonly Microsoft.Extensions.Logging.ILogger<ServiceLayerClient>? _logger;
     private readonly SemaphoreSlim _loginLock = new(1, 1);
     private volatile bool _loggedIn;
     private string? _sessionId;
     private string? _routeId = ".node1";
 
-    public ServiceLayerClient(ServiceLayerOptions options)
+    public ServiceLayerClient(ServiceLayerOptions options, Microsoft.Extensions.Logging.ILogger<ServiceLayerClient>? logger = null)
     {
         _options = options;
+        _logger = logger;
         ValidateOptions(options);
         var handler = new HttpClientHandler();
         if (options.AllowInvalidServerCertificate)
@@ -100,7 +103,10 @@ public sealed class ServiceLayerClient : IDisposable
             if (doc.RootElement.TryGetProperty("DocNum", out var numProp))
                 postedNum = numProp.GetInt64().ToString();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "解析 Service Layer 草稿转正式单返回结果失败，降级使用原始 DraftDocEntry={DraftDocEntry}: {ResponseBody}", draftDocEntry, responseBody);
+        }
 
         return (postedEntry, postedNum);
     }

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.5854" branch-rate="0.32189999999999996" version="1.9" timestamp="1786817672" lines-covered="1781" lines-valid="3042" branches-covered="451" branches-valid="1401">
+<coverage line-rate="0.5882999999999999" branch-rate="0.32189999999999996" version="1.9" timestamp="1786818263" lines-covered="1781" lines-valid="3027" branches-covered="451" branches-valid="1401">
   <sources>
     <source>C:\repo\SAP_B1_ApprovalCenter\src\</source>
   </sources>
@@ -11464,7 +11464,7 @@
         </class>
       </classes>
     </package>
-    <package name="Approval.SapAdapter" line-rate="0.2072" branch-rate="0.03" complexity="134">
+    <package name="Approval.SapAdapter" line-rate="0.2192" branch-rate="0.03" complexity="118">
       <classes>
         <class name="Approval.SapAdapter.SapAdapterRegistry" filename="Approval.SapAdapter\SapAdapterRegistry.cs" line-rate="0.8571" branch-rate="0.5" complexity="3">
           <methods>
@@ -11502,95 +11502,104 @@
             <line number="12" hits="15" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="23">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="25">
           <methods>
+            <method name="CreateDefaultHandler" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerOptions)" line-rate="0" branch-rate="0" complexity="2">
+              <lines>
+                <line number="39" hits="0" branch="False" />
+                <line number="40" hits="0" branch="True" condition-coverage="0% (0/2)">
+                  <conditions>
+                    <condition number="12" type="jump" coverage="0%" />
+                  </conditions>
+                </line>
+                <line number="41" hits="0" branch="False" />
+                <line number="42" hits="0" branch="False" />
+              </lines>
+            </method>
             <method name="get_CompanyDb" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="35" hits="0" branch="False" />
+                <line number="45" hits="0" branch="False" />
               </lines>
             </method>
             <method name="get_MirrorEnabled" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="36" hits="0" branch="False" />
+                <line number="46" hits="0" branch="False" />
               </lines>
             </method>
             <method name="BuildObjectPath" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerObjectOptions,System.String)" line-rate="0" branch-rate="0" complexity="6">
               <lines>
-                <line number="207" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="217" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="11" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="208" hits="0" branch="False" />
-                <line number="209" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="218" hits="0" branch="False" />
+                <line number="219" hits="0" branch="True" condition-coverage="0% (0/4)">
                   <conditions>
                     <condition number="57" type="jump" coverage="0%" />
                     <condition number="67" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="210" hits="0" branch="False" />
-                <line number="211" hits="0" branch="False" />
-                <line number="212" hits="0" branch="False" />
+                <line number="220" hits="0" branch="False" />
+                <line number="221" hits="0" branch="False" />
+                <line number="222" hits="0" branch="False" />
               </lines>
             </method>
             <method name="EnsureSuccess" signature="(System.Net.Http.HttpResponseMessage,System.String)" line-rate="0" branch-rate="0" complexity="4">
               <lines>
-                <line number="217" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="227" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="6" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="218" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="228" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="20" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="219" hits="0" branch="False" />
+                <line number="229" hits="0" branch="False" />
               </lines>
             </method>
             <method name="ValidateOptions" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerOptions)" line-rate="0" branch-rate="0" complexity="8">
               <lines>
-                <line number="224" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="234" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="14" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="225" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="235" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="38" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="226" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="236" hits="0" branch="True" condition-coverage="0% (0/4)">
                   <conditions>
                     <condition number="62" type="jump" coverage="0%" />
                     <condition number="75" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="227" hits="0" branch="False" />
-                <line number="228" hits="0" branch="False" />
+                <line number="237" hits="0" branch="False" />
+                <line number="238" hits="0" branch="False" />
               </lines>
             </method>
             <method name="Dispose" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="232" hits="0" branch="False" />
-                <line number="233" hits="0" branch="False" />
-                <line number="234" hits="0" branch="False" />
+                <line number="242" hits="0" branch="False" />
+                <line number="243" hits="0" branch="False" />
+                <line number="244" hits="0" branch="False" />
               </lines>
             </method>
-            <method name=".ctor" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerOptions,Microsoft.Extensions.Logging.ILogger`1&lt;Approval.SapAdapter.ServiceLayer.ServiceLayerClient&gt;)" line-rate="0" branch-rate="0" complexity="2">
+            <method name=".ctor" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerOptions,Microsoft.Extensions.Logging.ILogger`1&lt;Approval.SapAdapter.ServiceLayer.ServiceLayerClient&gt;)" line-rate="0" branch-rate="1" complexity="1">
+              <lines>
+                <line number="21" hits="0" branch="False" />
+                <line number="23" hits="0" branch="False" />
+              </lines>
+            </method>
+            <method name=".ctor" signature="(Approval.SapAdapter.ServiceLayer.ServiceLayerOptions,System.Net.Http.HttpMessageHandler,Microsoft.Extensions.Logging.ILogger`1&lt;Approval.SapAdapter.ServiceLayer.ServiceLayerClient&gt;)" line-rate="0" branch-rate="1" complexity="1">
               <lines>
                 <line number="15" hits="0" branch="False" />
                 <line number="18" hits="0" branch="False" />
-                <line number="20" hits="0" branch="False" />
-                <line number="22" hits="0" branch="False" />
-                <line number="23" hits="0" branch="False" />
-                <line number="24" hits="0" branch="False" />
                 <line number="25" hits="0" branch="False" />
-                <line number="26" hits="0" branch="True" condition-coverage="0% (0/2)">
-                  <conditions>
-                    <condition number="62" type="jump" coverage="0%" />
-                  </conditions>
-                </line>
                 <line number="27" hits="0" branch="False" />
                 <line number="28" hits="0" branch="False" />
                 <line number="29" hits="0" branch="False" />
@@ -11598,71 +11607,74 @@
                 <line number="31" hits="0" branch="False" />
                 <line number="32" hits="0" branch="False" />
                 <line number="33" hits="0" branch="False" />
+                <line number="34" hits="0" branch="False" />
+                <line number="35" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="35" hits="0" branch="False" />
-            <line number="36" hits="0" branch="False" />
-            <line number="207" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="39" hits="0" branch="False" />
+            <line number="40" hits="0" branch="True" condition-coverage="0% (0/2)">
+              <conditions>
+                <condition number="12" type="jump" coverage="0%" />
+              </conditions>
+            </line>
+            <line number="41" hits="0" branch="False" />
+            <line number="42" hits="0" branch="False" />
+            <line number="45" hits="0" branch="False" />
+            <line number="46" hits="0" branch="False" />
+            <line number="217" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="11" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="208" hits="0" branch="False" />
-            <line number="209" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="218" hits="0" branch="False" />
+            <line number="219" hits="0" branch="True" condition-coverage="0% (0/4)">
               <conditions>
                 <condition number="57" type="jump" coverage="0%" />
                 <condition number="67" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="210" hits="0" branch="False" />
-            <line number="211" hits="0" branch="False" />
-            <line number="212" hits="0" branch="False" />
-            <line number="217" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="220" hits="0" branch="False" />
+            <line number="221" hits="0" branch="False" />
+            <line number="222" hits="0" branch="False" />
+            <line number="227" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="6" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="218" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="228" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="20" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="219" hits="0" branch="False" />
-            <line number="224" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="229" hits="0" branch="False" />
+            <line number="234" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="14" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="225" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="235" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="38" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="226" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="236" hits="0" branch="True" condition-coverage="0% (0/4)">
               <conditions>
                 <condition number="62" type="jump" coverage="0%" />
                 <condition number="75" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="227" hits="0" branch="False" />
-            <line number="228" hits="0" branch="False" />
-            <line number="232" hits="0" branch="False" />
-            <line number="233" hits="0" branch="False" />
-            <line number="234" hits="0" branch="False" />
+            <line number="237" hits="0" branch="False" />
+            <line number="238" hits="0" branch="False" />
+            <line number="242" hits="0" branch="False" />
+            <line number="243" hits="0" branch="False" />
+            <line number="244" hits="0" branch="False" />
+            <line number="21" hits="0" branch="False" />
+            <line number="23" hits="0" branch="False" />
             <line number="15" hits="0" branch="False" />
             <line number="18" hits="0" branch="False" />
-            <line number="20" hits="0" branch="False" />
-            <line number="22" hits="0" branch="False" />
-            <line number="23" hits="0" branch="False" />
-            <line number="24" hits="0" branch="False" />
             <line number="25" hits="0" branch="False" />
-            <line number="26" hits="0" branch="True" condition-coverage="0% (0/2)">
-              <conditions>
-                <condition number="62" type="jump" coverage="0%" />
-              </conditions>
-            </line>
             <line number="27" hits="0" branch="False" />
             <line number="28" hits="0" branch="False" />
             <line number="29" hits="0" branch="False" />
@@ -11670,570 +11682,452 @@
             <line number="31" hits="0" branch="False" />
             <line number="32" hits="0" branch="False" />
             <line number="33" hits="0" branch="False" />
-          </lines>
-        </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass12_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
-          <methods>
-            <method name="&lt;GetRawAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="41" hits="0" branch="False" />
-              </lines>
-            </method>
-          </methods>
-          <lines>
-            <line number="41" hits="0" branch="False" />
-          </lines>
-        </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass13_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
-          <methods>
-            <method name="&lt;PatchMirrorAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="63" hits="0" branch="False" />
-                <line number="64" hits="0" branch="False" />
-                <line number="65" hits="0" branch="False" />
-                <line number="66" hits="0" branch="False" />
-              </lines>
-            </method>
-          </methods>
-          <lines>
-            <line number="63" hits="0" branch="False" />
-            <line number="64" hits="0" branch="False" />
-            <line number="65" hits="0" branch="False" />
-            <line number="66" hits="0" branch="False" />
+            <line number="34" hits="0" branch="False" />
+            <line number="35" hits="0" branch="False" />
           </lines>
         </class>
         <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass14_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
           <methods>
-            <method name="&lt;SaveDraftToDocumentAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
+            <method name="&lt;GetRawAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="88" hits="0" branch="False" />
-                <line number="89" hits="0" branch="False" />
-                <line number="90" hits="0" branch="False" />
-                <line number="91" hits="0" branch="False" />
+                <line number="51" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="88" hits="0" branch="False" />
-            <line number="89" hits="0" branch="False" />
-            <line number="90" hits="0" branch="False" />
-            <line number="91" hits="0" branch="False" />
+            <line number="51" hits="0" branch="False" />
           </lines>
         </class>
         <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass15_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
           <methods>
-            <method name="&lt;PostJournalVoucherAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
+            <method name="&lt;PatchMirrorAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="131" hits="0" branch="False" />
-                <line number="132" hits="0" branch="False" />
-                <line number="133" hits="0" branch="False" />
-                <line number="134" hits="0" branch="False" />
+                <line number="73" hits="0" branch="False" />
+                <line number="74" hits="0" branch="False" />
+                <line number="75" hits="0" branch="False" />
+                <line number="76" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="131" hits="0" branch="False" />
-            <line number="132" hits="0" branch="False" />
-            <line number="133" hits="0" branch="False" />
-            <line number="134" hits="0" branch="False" />
+            <line number="73" hits="0" branch="False" />
+            <line number="74" hits="0" branch="False" />
+            <line number="75" hits="0" branch="False" />
+            <line number="76" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;EnsureLoginAsync&gt;d__17" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="14">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass16_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
+          <methods>
+            <method name="&lt;SaveDraftToDocumentAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
+              <lines>
+                <line number="98" hits="0" branch="False" />
+                <line number="99" hits="0" branch="False" />
+                <line number="100" hits="0" branch="False" />
+                <line number="101" hits="0" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="98" hits="0" branch="False" />
+            <line number="99" hits="0" branch="False" />
+            <line number="100" hits="0" branch="False" />
+            <line number="101" hits="0" branch="False" />
+          </lines>
+        </class>
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;&gt;c__DisplayClass17_0" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
+          <methods>
+            <method name="&lt;PostJournalVoucherAsync&gt;b__0" signature="()" line-rate="0" branch-rate="1" complexity="1">
+              <lines>
+                <line number="141" hits="0" branch="False" />
+                <line number="142" hits="0" branch="False" />
+                <line number="143" hits="0" branch="False" />
+                <line number="144" hits="0" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="141" hits="0" branch="False" />
+            <line number="142" hits="0" branch="False" />
+            <line number="143" hits="0" branch="False" />
+            <line number="144" hits="0" branch="False" />
+          </lines>
+        </class>
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;EnsureLoginAsync&gt;d__19" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="14">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="0" complexity="14">
               <lines>
-                <line number="165" hits="0" branch="True" condition-coverage="0% (0/6)">
+                <line number="175" hits="0" branch="True" condition-coverage="0% (0/6)">
                   <conditions>
                     <condition number="21" type="jump" coverage="0%" />
                     <condition number="34" type="jump" coverage="0%" />
                     <condition number="47" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="166" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="176" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="161" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="169" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="179" hits="0" branch="True" condition-coverage="0% (0/4)">
                   <conditions>
                     <condition number="174" type="jump" coverage="0%" />
                     <condition number="187" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="170" hits="0" branch="False" />
-                <line number="171" hits="0" branch="False" />
-                <line number="172" hits="0" branch="False" />
-                <line number="173" hits="0" branch="False" />
-                <line number="174" hits="0" branch="False" />
-                <line number="175" hits="0" branch="False" />
-                <line number="176" hits="0" branch="False" />
-                <line number="177" hits="0" branch="False" />
-                <line number="178" hits="0" branch="False" />
-                <line number="179" hits="0" branch="False" />
                 <line number="180" hits="0" branch="False" />
                 <line number="181" hits="0" branch="False" />
                 <line number="182" hits="0" branch="False" />
+                <line number="183" hits="0" branch="False" />
+                <line number="184" hits="0" branch="False" />
+                <line number="185" hits="0" branch="False" />
                 <line number="186" hits="0" branch="False" />
-                <line number="187" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="187" hits="0" branch="False" />
+                <line number="188" hits="0" branch="False" />
+                <line number="189" hits="0" branch="False" />
+                <line number="190" hits="0" branch="False" />
+                <line number="191" hits="0" branch="False" />
+                <line number="192" hits="0" branch="False" />
+                <line number="196" hits="0" branch="False" />
+                <line number="197" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="617" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="189" hits="0" branch="False" />
-                <line number="191" hits="0" branch="False" />
-                <line number="192" hits="0" branch="False" />
-                <line number="195" hits="0" branch="False" />
-                <line number="197" hits="0" branch="False" />
-                <line number="198" hits="0" branch="False" />
+                <line number="199" hits="0" branch="False" />
                 <line number="201" hits="0" branch="False" />
-                <line number="203" hits="0" branch="False" />
+                <line number="202" hits="0" branch="False" />
+                <line number="205" hits="0" branch="False" />
+                <line number="207" hits="0" branch="False" />
+                <line number="208" hits="0" branch="False" />
+                <line number="211" hits="0" branch="False" />
+                <line number="213" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="165" hits="0" branch="True" condition-coverage="0% (0/6)">
+            <line number="175" hits="0" branch="True" condition-coverage="0% (0/6)">
               <conditions>
                 <condition number="21" type="jump" coverage="0%" />
                 <condition number="34" type="jump" coverage="0%" />
                 <condition number="47" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="166" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="176" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="161" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="169" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="179" hits="0" branch="True" condition-coverage="0% (0/4)">
               <conditions>
                 <condition number="174" type="jump" coverage="0%" />
                 <condition number="187" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="170" hits="0" branch="False" />
-            <line number="171" hits="0" branch="False" />
-            <line number="172" hits="0" branch="False" />
-            <line number="173" hits="0" branch="False" />
-            <line number="174" hits="0" branch="False" />
-            <line number="175" hits="0" branch="False" />
-            <line number="176" hits="0" branch="False" />
-            <line number="177" hits="0" branch="False" />
-            <line number="178" hits="0" branch="False" />
-            <line number="179" hits="0" branch="False" />
             <line number="180" hits="0" branch="False" />
             <line number="181" hits="0" branch="False" />
             <line number="182" hits="0" branch="False" />
+            <line number="183" hits="0" branch="False" />
+            <line number="184" hits="0" branch="False" />
+            <line number="185" hits="0" branch="False" />
             <line number="186" hits="0" branch="False" />
-            <line number="187" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="187" hits="0" branch="False" />
+            <line number="188" hits="0" branch="False" />
+            <line number="189" hits="0" branch="False" />
+            <line number="190" hits="0" branch="False" />
+            <line number="191" hits="0" branch="False" />
+            <line number="192" hits="0" branch="False" />
+            <line number="196" hits="0" branch="False" />
+            <line number="197" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="617" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="189" hits="0" branch="False" />
-            <line number="191" hits="0" branch="False" />
-            <line number="192" hits="0" branch="False" />
-            <line number="195" hits="0" branch="False" />
-            <line number="197" hits="0" branch="False" />
-            <line number="198" hits="0" branch="False" />
+            <line number="199" hits="0" branch="False" />
             <line number="201" hits="0" branch="False" />
-            <line number="203" hits="0" branch="False" />
+            <line number="202" hits="0" branch="False" />
+            <line number="205" hits="0" branch="False" />
+            <line number="207" hits="0" branch="False" />
+            <line number="208" hits="0" branch="False" />
+            <line number="211" hits="0" branch="False" />
+            <line number="213" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;GetRawAsync&gt;d__12" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;GetRawAsync&gt;d__14" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="1" complexity="1">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="40" hits="0" branch="False" />
-                <line number="42" hits="0" branch="False" />
-                <line number="43" hits="0" branch="False" />
-                <line number="44" hits="0" branch="False" />
-                <line number="45" hits="0" branch="False" />
+                <line number="50" hits="0" branch="False" />
+                <line number="52" hits="0" branch="False" />
+                <line number="53" hits="0" branch="False" />
+                <line number="54" hits="0" branch="False" />
+                <line number="55" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="40" hits="0" branch="False" />
-            <line number="42" hits="0" branch="False" />
-            <line number="43" hits="0" branch="False" />
-            <line number="44" hits="0" branch="False" />
-            <line number="45" hits="0" branch="False" />
+            <line number="50" hits="0" branch="False" />
+            <line number="52" hits="0" branch="False" />
+            <line number="53" hits="0" branch="False" />
+            <line number="54" hits="0" branch="False" />
+            <line number="55" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;PatchMirrorAsync&gt;d__13" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="2">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;PatchMirrorAsync&gt;d__15" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="2">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="0" complexity="2">
               <lines>
-                <line number="55" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="65" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="68" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="56" hits="0" branch="False" />
-                <line number="57" hits="0" branch="False" />
-                <line number="58" hits="0" branch="False" />
-                <line number="59" hits="0" branch="False" />
-                <line number="60" hits="0" branch="False" />
-                <line number="61" hits="0" branch="False" />
-                <line number="62" hits="0" branch="False" />
+                <line number="66" hits="0" branch="False" />
                 <line number="67" hits="0" branch="False" />
                 <line number="68" hits="0" branch="False" />
                 <line number="69" hits="0" branch="False" />
+                <line number="70" hits="0" branch="False" />
+                <line number="71" hits="0" branch="False" />
+                <line number="72" hits="0" branch="False" />
+                <line number="77" hits="0" branch="False" />
+                <line number="78" hits="0" branch="False" />
+                <line number="79" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="55" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="65" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="68" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="56" hits="0" branch="False" />
-            <line number="57" hits="0" branch="False" />
-            <line number="58" hits="0" branch="False" />
-            <line number="59" hits="0" branch="False" />
-            <line number="60" hits="0" branch="False" />
-            <line number="61" hits="0" branch="False" />
-            <line number="62" hits="0" branch="False" />
+            <line number="66" hits="0" branch="False" />
             <line number="67" hits="0" branch="False" />
             <line number="68" hits="0" branch="False" />
             <line number="69" hits="0" branch="False" />
+            <line number="70" hits="0" branch="False" />
+            <line number="71" hits="0" branch="False" />
+            <line number="72" hits="0" branch="False" />
+            <line number="77" hits="0" branch="False" />
+            <line number="78" hits="0" branch="False" />
+            <line number="79" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;PostJournalVoucherAsync&gt;d__15" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="2">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;PostJournalVoucherAsync&gt;d__17" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="2">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="0" complexity="2">
               <lines>
-                <line number="119" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="129" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="44" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="120" hits="0" branch="False" />
-                <line number="122" hits="0" branch="False" />
-                <line number="123" hits="0" branch="False" />
-                <line number="124" hits="0" branch="False" />
-                <line number="125" hits="0" branch="False" />
-                <line number="126" hits="0" branch="False" />
-                <line number="127" hits="0" branch="False" />
-                <line number="128" hits="0" branch="False" />
-                <line number="129" hits="0" branch="False" />
+                <line number="130" hits="0" branch="False" />
+                <line number="132" hits="0" branch="False" />
+                <line number="133" hits="0" branch="False" />
+                <line number="134" hits="0" branch="False" />
+                <line number="135" hits="0" branch="False" />
                 <line number="136" hits="0" branch="False" />
                 <line number="137" hits="0" branch="False" />
                 <line number="138" hits="0" branch="False" />
                 <line number="139" hits="0" branch="False" />
+                <line number="146" hits="0" branch="False" />
+                <line number="147" hits="0" branch="False" />
+                <line number="148" hits="0" branch="False" />
+                <line number="149" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="119" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="129" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="44" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="120" hits="0" branch="False" />
-            <line number="122" hits="0" branch="False" />
-            <line number="123" hits="0" branch="False" />
-            <line number="124" hits="0" branch="False" />
-            <line number="125" hits="0" branch="False" />
-            <line number="126" hits="0" branch="False" />
-            <line number="127" hits="0" branch="False" />
-            <line number="128" hits="0" branch="False" />
-            <line number="129" hits="0" branch="False" />
+            <line number="130" hits="0" branch="False" />
+            <line number="132" hits="0" branch="False" />
+            <line number="133" hits="0" branch="False" />
+            <line number="134" hits="0" branch="False" />
+            <line number="135" hits="0" branch="False" />
             <line number="136" hits="0" branch="False" />
             <line number="137" hits="0" branch="False" />
             <line number="138" hits="0" branch="False" />
             <line number="139" hits="0" branch="False" />
+            <line number="146" hits="0" branch="False" />
+            <line number="147" hits="0" branch="False" />
+            <line number="148" hits="0" branch="False" />
+            <line number="149" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;SaveDraftToDocumentAsync&gt;d__14" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="8">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;SaveDraftToDocumentAsync&gt;d__16" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="8">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="0" complexity="8">
               <lines>
-                <line number="76" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="86" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="44" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="77" hits="0" branch="False" />
-                <line number="79" hits="0" branch="False" />
-                <line number="80" hits="0" branch="False" />
-                <line number="81" hits="0" branch="False" />
-                <line number="82" hits="0" branch="False" />
-                <line number="83" hits="0" branch="False" />
-                <line number="84" hits="0" branch="False" />
-                <line number="85" hits="0" branch="False" />
-                <line number="86" hits="0" branch="False" />
+                <line number="87" hits="0" branch="False" />
+                <line number="89" hits="0" branch="False" />
+                <line number="90" hits="0" branch="False" />
+                <line number="91" hits="0" branch="False" />
+                <line number="92" hits="0" branch="False" />
                 <line number="93" hits="0" branch="False" />
                 <line number="94" hits="0" branch="False" />
+                <line number="95" hits="0" branch="False" />
                 <line number="96" hits="0" branch="False" />
-                <line number="97" hits="0" branch="False" />
-                <line number="100" hits="0" branch="False" />
-                <line number="101" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="103" hits="0" branch="False" />
+                <line number="104" hits="0" branch="False" />
+                <line number="106" hits="0" branch="False" />
+                <line number="107" hits="0" branch="False" />
+                <line number="110" hits="0" branch="False" />
+                <line number="111" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="433" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="102" hits="0" branch="False" />
-                <line number="103" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="112" hits="0" branch="False" />
+                <line number="113" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="476" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="104" hits="0" branch="False" />
-                <line number="105" hits="0" branch="False" />
-                <line number="106" hits="0" branch="False" />
-                <line number="108" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="114" hits="0" branch="False" />
+                <line number="115" hits="0" branch="False" />
+                <line number="116" hits="0" branch="False" />
+                <line number="118" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="525" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="109" hits="0" branch="False" />
-                <line number="111" hits="0" branch="False" />
-                <line number="112" hits="0" branch="False" />
+                <line number="119" hits="0" branch="False" />
+                <line number="121" hits="0" branch="False" />
+                <line number="122" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="76" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="86" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="44" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="77" hits="0" branch="False" />
-            <line number="79" hits="0" branch="False" />
-            <line number="80" hits="0" branch="False" />
-            <line number="81" hits="0" branch="False" />
-            <line number="82" hits="0" branch="False" />
-            <line number="83" hits="0" branch="False" />
-            <line number="84" hits="0" branch="False" />
-            <line number="85" hits="0" branch="False" />
-            <line number="86" hits="0" branch="False" />
+            <line number="87" hits="0" branch="False" />
+            <line number="89" hits="0" branch="False" />
+            <line number="90" hits="0" branch="False" />
+            <line number="91" hits="0" branch="False" />
+            <line number="92" hits="0" branch="False" />
             <line number="93" hits="0" branch="False" />
             <line number="94" hits="0" branch="False" />
+            <line number="95" hits="0" branch="False" />
             <line number="96" hits="0" branch="False" />
-            <line number="97" hits="0" branch="False" />
-            <line number="100" hits="0" branch="False" />
-            <line number="101" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="103" hits="0" branch="False" />
+            <line number="104" hits="0" branch="False" />
+            <line number="106" hits="0" branch="False" />
+            <line number="107" hits="0" branch="False" />
+            <line number="110" hits="0" branch="False" />
+            <line number="111" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="433" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="102" hits="0" branch="False" />
-            <line number="103" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="112" hits="0" branch="False" />
+            <line number="113" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="476" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="104" hits="0" branch="False" />
-            <line number="105" hits="0" branch="False" />
-            <line number="106" hits="0" branch="False" />
-            <line number="108" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="114" hits="0" branch="False" />
+            <line number="115" hits="0" branch="False" />
+            <line number="116" hits="0" branch="False" />
+            <line number="118" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="525" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="109" hits="0" branch="False" />
-            <line number="111" hits="0" branch="False" />
-            <line number="112" hits="0" branch="False" />
+            <line number="119" hits="0" branch="False" />
+            <line number="121" hits="0" branch="False" />
+            <line number="122" hits="0" branch="False" />
           </lines>
         </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;SendWithReloginAsync&gt;d__16" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="10">
+        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerClient/&lt;SendWithReloginAsync&gt;d__18" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerClient.cs" line-rate="0" branch-rate="0" complexity="10">
           <methods>
             <method name="MoveNext" signature="()" line-rate="0" branch-rate="0" complexity="10">
               <lines>
-                <line number="143" hits="0" branch="False" />
-                <line number="144" hits="0" branch="False" />
-                <line number="145" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="153" hits="0" branch="False" />
+                <line number="154" hits="0" branch="False" />
+                <line number="155" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="159" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="147" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="157" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="195" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="149" hits="0" branch="False" />
-                <line number="150" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="159" hits="0" branch="False" />
+                <line number="160" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="333" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="151" hits="0" branch="False" />
-                <line number="152" hits="0" branch="False" />
-                <line number="153" hits="0" branch="False" />
-                <line number="154" hits="0" branch="False" />
-                <line number="155" hits="0" branch="False" />
-                <line number="156" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="161" hits="0" branch="False" />
+                <line number="162" hits="0" branch="False" />
+                <line number="163" hits="0" branch="False" />
+                <line number="164" hits="0" branch="False" />
+                <line number="165" hits="0" branch="False" />
+                <line number="166" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="490" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="158" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="168" hits="0" branch="True" condition-coverage="0% (0/2)">
                   <conditions>
                     <condition number="527" type="jump" coverage="0%" />
                   </conditions>
                 </line>
-                <line number="160" hits="0" branch="False" />
-                <line number="161" hits="0" branch="False" />
+                <line number="170" hits="0" branch="False" />
+                <line number="171" hits="0" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="143" hits="0" branch="False" />
-            <line number="144" hits="0" branch="False" />
-            <line number="145" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="153" hits="0" branch="False" />
+            <line number="154" hits="0" branch="False" />
+            <line number="155" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="159" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="147" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="157" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="195" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="149" hits="0" branch="False" />
-            <line number="150" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="159" hits="0" branch="False" />
+            <line number="160" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="333" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="151" hits="0" branch="False" />
-            <line number="152" hits="0" branch="False" />
-            <line number="153" hits="0" branch="False" />
-            <line number="154" hits="0" branch="False" />
-            <line number="155" hits="0" branch="False" />
-            <line number="156" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="161" hits="0" branch="False" />
+            <line number="162" hits="0" branch="False" />
+            <line number="163" hits="0" branch="False" />
+            <line number="164" hits="0" branch="False" />
+            <line number="165" hits="0" branch="False" />
+            <line number="166" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="490" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="158" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="168" hits="0" branch="True" condition-coverage="0% (0/2)">
               <conditions>
                 <condition number="527" type="jump" coverage="0%" />
               </conditions>
             </line>
-            <line number="160" hits="0" branch="False" />
-            <line number="161" hits="0" branch="False" />
-          </lines>
-        </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerOptions" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerOptions.cs" line-rate="0" branch-rate="1" complexity="7">
-          <methods>
-            <method name="get_BaseUrl" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="5" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_CompanyDb" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="6" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_UserName" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="7" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_Password" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="8" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_AllowInvalidServerCertificate" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="9" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_MirrorEnabled" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="10" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_Objects" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="11" hits="0" branch="False" />
-              </lines>
-            </method>
-          </methods>
-          <lines>
-            <line number="5" hits="0" branch="False" />
-            <line number="6" hits="0" branch="False" />
-            <line number="7" hits="0" branch="False" />
-            <line number="8" hits="0" branch="False" />
-            <line number="9" hits="0" branch="False" />
-            <line number="10" hits="0" branch="False" />
-            <line number="11" hits="0" branch="False" />
-          </lines>
-        </class>
-        <class name="Approval.SapAdapter.ServiceLayer.ServiceLayerObjectOptions" filename="Approval.SapAdapter\ServiceLayer\ServiceLayerOptions.cs" line-rate="0" branch-rate="1" complexity="11">
-          <methods>
-            <method name="get_ObjectCode" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="16" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_EntitySet" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="17" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_KeyType" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="18" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_TitleField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="19" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_DocTotalField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="20" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_CreatorCodeField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="21" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_CreatorNameField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="22" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_LineCollection" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="23" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_StatusField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="24" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_InstanceIdField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="25" hits="0" branch="False" />
-              </lines>
-            </method>
-            <method name="get_HashField" signature="()" line-rate="0" branch-rate="1" complexity="1">
-              <lines>
-                <line number="26" hits="0" branch="False" />
-              </lines>
-            </method>
-          </methods>
-          <lines>
-            <line number="16" hits="0" branch="False" />
-            <line number="17" hits="0" branch="False" />
-            <line number="18" hits="0" branch="False" />
-            <line number="19" hits="0" branch="False" />
-            <line number="20" hits="0" branch="False" />
-            <line number="21" hits="0" branch="False" />
-            <line number="22" hits="0" branch="False" />
-            <line number="23" hits="0" branch="False" />
-            <line number="24" hits="0" branch="False" />
-            <line number="25" hits="0" branch="False" />
-            <line number="26" hits="0" branch="False" />
+            <line number="170" hits="0" branch="False" />
+            <line number="171" hits="0" branch="False" />
           </lines>
         </class>
         <class name="Approval.SapAdapter.Adapters.FakeObjectAdapter" filename="Approval.SapAdapter\Adapters\FakeObjectAdapter.cs" line-rate="0.9272" branch-rate="1" complexity="6">

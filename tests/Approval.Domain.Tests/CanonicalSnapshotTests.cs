@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Approval.Domain.Services;
 using FluentAssertions;
 using Xunit;
@@ -9,7 +10,6 @@ public class CanonicalSnapshotTests
     [Fact]
     public void Build_ShouldGenerateSameSha256_RegardlessOfJsonKeyOrdering()
     {
-        // 乱序 JSON 1
         var json1 = """
         {
             "DocTotal": 85600.0,
@@ -22,7 +22,6 @@ public class CanonicalSnapshotTests
         }
         """;
 
-        // 键顺序完全不同的 JSON 2 (数据语义完全相同)
         var json2 = """
         {
             "Comments": "采购测试",
@@ -132,5 +131,22 @@ public class CanonicalSnapshotTests
         canonical.Should().Be("{}");
         sha.Should().NotBeNullOrWhiteSpace();
         sha.Should().HaveLength(64);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Build_ShouldThrowArgumentException_WhenRawJsonIsNullOrWhitespace(string? invalidJson)
+    {
+        var act = () => CanonicalSnapshotBuilder.Build(invalidJson!);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Build_ShouldThrowJsonException_WhenJsonIsMalformed()
+    {
+        var act = () => CanonicalSnapshotBuilder.Build("{invalid_json: 123");
+        act.Should().Throw<JsonException>();
     }
 }

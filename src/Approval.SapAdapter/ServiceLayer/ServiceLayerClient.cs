@@ -18,18 +18,28 @@ public sealed class ServiceLayerClient : IDisposable
     private string? _routeId = ".node1";
 
     public ServiceLayerClient(ServiceLayerOptions options, Microsoft.Extensions.Logging.ILogger<ServiceLayerClient>? logger = null)
+        : this(options, CreateDefaultHandler(options), logger)
+    {
+    }
+
+    public ServiceLayerClient(ServiceLayerOptions options, HttpMessageHandler handler, Microsoft.Extensions.Logging.ILogger<ServiceLayerClient>? logger = null)
     {
         _options = options;
         _logger = logger;
         ValidateOptions(options);
-        var handler = new HttpClientHandler();
-        if (options.AllowInvalidServerCertificate)
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         _http = new HttpClient(handler)
         {
             BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/"),
             Timeout = TimeSpan.FromSeconds(60)
         };
+    }
+
+    private static HttpClientHandler CreateDefaultHandler(ServiceLayerOptions options)
+    {
+        var handler = new HttpClientHandler();
+        if (options.AllowInvalidServerCertificate)
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        return handler;
     }
 
     public string CompanyDb => _options.CompanyDb;

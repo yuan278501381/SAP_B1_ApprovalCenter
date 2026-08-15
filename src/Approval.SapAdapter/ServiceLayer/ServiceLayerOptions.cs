@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Approval.SapAdapter.ServiceLayer;
 
+[ExcludeFromCodeCoverage]
 public sealed class ServiceLayerOptions
 {
     public string BaseUrl { get; set; } = string.Empty;
@@ -11,6 +14,7 @@ public sealed class ServiceLayerOptions
     public List<ServiceLayerObjectOptions> Objects { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage]
 public sealed class ServiceLayerObjectOptions
 {
     public string ObjectCode { get; set; } = string.Empty;

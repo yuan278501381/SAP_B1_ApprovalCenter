@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\Approval.Domain\Approval.Domain.csproj" />
     <ProjectReference Include="..\..\src\Approval.Application\Approval.Application.csproj" />
     <ProjectReference Include="..\..\src\Approval.Infrastructure\Approval.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Approval.SapAdapter\Approval.SapAdapter.csproj" />
   </ItemGroup>
 
 </Project>

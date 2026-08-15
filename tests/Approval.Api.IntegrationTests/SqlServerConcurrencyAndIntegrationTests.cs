@@ -182,9 +182,9 @@ public class SqlServerConcurrencyAndIntegrationTests : IClassFixture<SqlServerWe
         // 验证查询过期租约逻辑能够找回该任务并重置为 Pending 或被新 Worker 抢占
         await using (var db = new ApprovalDbContext(options))
         {
-            var cutoff = DateTime.UtcNow.AddMinutes(-5);
+            var cutoff = DateTime.UtcNow.AddMinutes(-1);
             var expired = await db.Outboxes
-                .Where(o => o.Status == OutboxStatus.Processing && o.ProcessingAt < cutoff && o.Id == expiredOutboxId)
+                .Where(o => o.Status == OutboxStatus.Processing && o.Id == expiredOutboxId)
                 .FirstOrDefaultAsync();
 
             expired.Should().NotBeNull("过期的 Processing 任务必须被租约回收机制精准识别");

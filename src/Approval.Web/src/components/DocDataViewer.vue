@@ -2001,8 +2001,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 23, 42, 0.45);
   z-index: 9999;
   display: flex;
   justify-content: flex-end;

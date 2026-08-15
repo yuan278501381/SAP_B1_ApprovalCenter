@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     SAP B1 10.0 通用可靠审批平台一键跨架构构建与发布脚本
 .DESCRIPTION
@@ -51,11 +51,28 @@ $workerProj = Join-Path $rootDir "src\Approval.Worker\Approval.Worker.csproj"
 $workerOut = Join-Path $distDir "Approval.Worker"
 dotnet publish $workerProj -c $Configuration -r $Architecture --self-contained true -o $workerOut
 
-# 拷贝前端产物至 API wwwroot
+# 拷贝前端产物至 API wwwroot 并执行完整性门禁
 $wwwroot = Join-Path $apiOut "wwwroot"
 if (Test-Path "$webDir\dist") {
+    Write-Host "  执行前端静态资产完整性门禁校验..." -ForegroundColor DarkGray
+    $indexHtmlPath = Join-Path "$webDir\dist" "index.html"
+    if (-not (Test-Path $indexHtmlPath)) {
+        Write-Error "前端构建产物缺失 index.html，中止构建！"
+    }
+    
+    # 递归镜像拷贝至 API wwwroot
     New-Item -ItemType Directory -Path $wwwroot -Force | Out-Null
     Copy-Item -Path "$webDir\dist\*" -Destination $wwwroot -Recurse -Force
+    
+    # 校验 assets 目录与关键入口文件
+    $targetIndexHtml = Join-Path $wwwroot "index.html"
+    $targetAssets = Join-Path $wwwroot "assets"
+    if (-not (Test-Path $targetIndexHtml) -or -not (Test-Path $targetAssets)) {
+        Write-Error "API wwwroot 部署包资产不完整，中止构建！"
+    }
+    
+    $assetCount = (Get-ChildItem $targetAssets).Count
+    Write-Host "  ✅ 前端静态资产完整性验证通过: 已同步 $assetCount 个静态资源至 API wwwroot。" -ForegroundColor Green
 }
 
 Write-Host "`n========================================================" -ForegroundColor Green

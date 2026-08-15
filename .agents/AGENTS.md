@@ -60,3 +60,14 @@
 * **私有化服务器文案红线**: 本系统为企业局域网/私有化本地部署架构，全局前端与后端提示语严禁出现“云端/云端漫游”等公有云歧义词汇，必须严格规范为**“已保存到服务器”** / **“已同步至服务器”**。
 * **0 延迟键盘盲操瞬切**: 待办工作台与单据详情必须保持内存高速缓存与零 DOM 颠簸（Zero Layout Thrashing），保障键盘 `J`/`K` 穿梭切换达到 0ms 电竞级丝滑响应。
 </RULE[enterprise_terminology_and_ux]>
+
+<RULE[frontend_devops_standards]>
+## 7. 前端世界级 DevOps 与防白屏自动化质量门禁 (Frontend DevOps & Zero-White-Screen)
+* **静态资产完整性哈希门禁 (Build Gate)**: 前端构建必须自动校验 `index.html` 引用的全部 JS/CSS/字体物理资产存在且非空，强力镜像同步至 `wwwroot`。
+* **防缓存污染机制 (Zero-Stale Headers)**: Kestrel 服务端强制对 `index.html` 注入 `no-cache, no-store, must-revalidate`，带 Hash 资产注入 `max-age=31536000, immutable`，彻底消除客户端版本撕裂与旧缓存残留。
+* **无头浏览器真机冒烟测试门禁 (Headless Smoke Gate)**: 任何部署脚本执行完毕后，必须由 CDP 无头浏览器自动加载页面并断言：
+  1. `HTTP 404 / 500 资源请求数 === 0`；
+  2. `JavaScript 运行时未捕获 Exception === 0`；
+  3. `#app` 根节点挂载成功且 DOM 结构非空。
+  若有任一项不达标，立即熔断阻断部署并报错。
+</RULE[frontend_devops_standards]>

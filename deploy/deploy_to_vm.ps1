@@ -79,6 +79,12 @@ robocopy "$distDir\Approval.Api" "$remoteBase\Approval.Api" /MIR /NP /NFL /NDO /
 Write-Host "  极速增量同步 Worker 文件至 $remoteBase\Approval.Worker..." -ForegroundColor DarkGray
 robocopy "$distDir\Approval.Worker" "$remoteBase\Approval.Worker" /MIR /NP /NFL /NDO /R:1 /W:1 | Out-Null
 
+# 强制同步最新 wwwroot 静态产物 (彻底消除旧版缓存)
+Write-Host "  强制同步前端静态产物至 $remoteBase\Approval.Api\wwwroot..." -ForegroundColor DarkGray
+$remoteWwwroot = "$remoteBase\Approval.Api\wwwroot"
+robocopy "$distDir\Approval.Api\wwwroot" "$remoteWwwroot" /MIR /NP /NFL /NDO /R:1 /W:1 | Out-Null
+Copy-Item -Path "$distDir\Approval.Api\wwwroot\index.html" -Destination "$remoteWwwroot\index.html" -Force
+
 # 3. 注入生产环境配置文件
 Write-Host "`n[3/5] 注入生产环境配置文件 (appsettings.Production.json)..." -ForegroundColor Yellow
 $prodConfig = @"
@@ -184,6 +190,23 @@ try {
     }
 } catch {
     Write-Warning "  门户响应: $($_.Exception.Message)"
+}
+
+# 6. 执行世界级无头浏览器真机端到端冒烟测试门禁 (Headless Browser Smoke Test Gate)
+Write-Host "`n[6/6] 触发无头浏览器真机端到端渲染与防白屏冒烟测试..." -ForegroundColor Yellow
+$smokeScript = Join-Path $rootDir "scripts\test_nav_capture.mjs"
+if (Test-Path $smokeScript) {
+    $smokeOutput = node $smokeScript
+    $has404 = $smokeOutput -match "404 Not Found"
+    $hasException = $smokeOutput -match "RUNTIME EXCEPTION"
+    $isMounted = $smokeOutput -match "#app Children: [1-9]"
+
+    if ($has404 -or $hasException -or -not $isMounted) {
+        Write-Host $smokeOutput -ForegroundColor Red
+        Write-Error "❌ 自动化前端冒烟测试未通过 (检测到白屏或 404 资源缺失)，发布阻断！"
+    } else {
+        Write-Host "  ✅ 自动化无头浏览器真机冒烟测试 100% 绿灯通过 (0 异常, 0 报错, 成功渲染挂载)！" -ForegroundColor Green
+    }
 }
 
 Write-Host "`n========================================================" -ForegroundColor Green

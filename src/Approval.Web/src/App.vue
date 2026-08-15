@@ -11,7 +11,7 @@ import {
   Sparkles
 } from 'lucide-vue-next'
 
-const currentTab = ref<'workbench' | 'rules' | 'designer' | 'bpmnlab'>('bpmnlab')
+const currentTab = ref<'workbench' | 'rules' | 'designer' | 'bpmnlab'>('workbench')
 </script>
 
 <template>

@@ -176,10 +176,7 @@ async function initBpmnJs() {
   }
 
   bpmnModeler = new BpmnModeler({
-    container: bpmnContainerRef.value,
-    keyboard: {
-      bindTo: window
-    }
+    container: bpmnContainerRef.value
   })
 
   // 监听选择事件
@@ -504,6 +501,17 @@ async function switchTab(tab: 'bpmnjs' | 'logicflow' | 'xml' | 'flowable') {
     }, 60)
   }
 }
+
+onBeforeUnmount(() => {
+  if (bpmnModeler) {
+    try { bpmnModeler.destroy() } catch {}
+    bpmnModeler = null
+  }
+  if (lfInstance) {
+    try { lfInstance.destroy() } catch {}
+    lfInstance = null
+  }
+})
 </script>
 
 <template>

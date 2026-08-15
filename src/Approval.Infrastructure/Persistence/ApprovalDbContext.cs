@@ -53,6 +53,7 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
         await Set<TEntity>().AddAsync(entity, cancellationToken);
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

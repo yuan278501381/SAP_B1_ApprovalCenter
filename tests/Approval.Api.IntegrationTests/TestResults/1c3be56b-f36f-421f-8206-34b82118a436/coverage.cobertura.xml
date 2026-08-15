@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.5882999999999999" branch-rate="0.32189999999999996" version="1.9" timestamp="1786818319" lines-covered="1781" lines-valid="3027" branches-covered="451" branches-valid="1401">
+<coverage line-rate="0.5832" branch-rate="0.31989999999999996" version="1.9" timestamp="1786818472" lines-covered="1744" lines-valid="2990" branches-covered="447" branches-valid="1397">
   <sources>
     <source>C:\repo\SAP_B1_ApprovalCenter\src\</source>
   </sources>
@@ -8350,7 +8350,7 @@
         </class>
       </classes>
     </package>
-    <package name="Approval.Infrastructure" line-rate="0.5145000000000001" branch-rate="0.0815" complexity="463">
+    <package name="Approval.Infrastructure" line-rate="0.4917" branch-rate="0.0726" complexity="475">
       <classes>
         <class name="Approval.Infrastructure.Services.DbInitializer/&lt;SeedAsync&gt;d__0" filename="Approval.Infrastructure\Services\DbInitializer.cs" line-rate="1" branch-rate="1" complexity="2">
           <methods>
@@ -10734,7 +10734,7 @@
             <line number="115" hits="10" branch="False" />
           </lines>
         </class>
-        <class name="Approval.Infrastructure.Persistence.ApprovalDbContext" filename="Approval.Infrastructure\Persistence\ApprovalDbContext.cs" line-rate="0.9775" branch-rate="1" complexity="43">
+        <class name="Approval.Infrastructure.Persistence.ApprovalDbContext" filename="Approval.Infrastructure\Persistence\ApprovalDbContext.cs" line-rate="0.85" branch-rate="1" complexity="39">
           <methods>
             <method name="get_Definitions" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
@@ -10896,262 +10896,23 @@
                 <line number="49" hits="0" branch="False" />
               </lines>
             </method>
-            <method name="OnModelCreating" signature="(Microsoft.EntityFrameworkCore.ModelBuilder)" line-rate="1" branch-rate="1" complexity="4">
-              <lines>
-                <line number="58" hits="4" branch="False" />
-                <line number="61" hits="4" branch="False" />
-                <line number="62" hits="4" branch="False" />
-                <line number="63" hits="4" branch="False" />
-                <line number="64" hits="4" branch="False" />
-                <line number="65" hits="4" branch="False" />
-                <line number="66" hits="4" branch="False" />
-                <line number="67" hits="4" branch="False" />
-                <line number="68" hits="4" branch="False" />
-                <line number="69" hits="8" branch="False" />
-                <line number="72" hits="4" branch="False" />
-                <line number="73" hits="4" branch="False" />
-                <line number="74" hits="4" branch="False" />
-                <line number="75" hits="4" branch="False" />
-                <line number="76" hits="4" branch="False" />
-                <line number="77" hits="4" branch="False" />
-                <line number="78" hits="4" branch="False" />
-                <line number="79" hits="4" branch="False" />
-                <line number="80" hits="4" branch="False" />
-                <line number="81" hits="4" branch="False" />
-                <line number="82" hits="8" branch="False" />
-                <line number="85" hits="4" branch="False" />
-                <line number="86" hits="4" branch="False" />
-                <line number="87" hits="4" branch="False" />
-                <line number="88" hits="4" branch="False" />
-                <line number="89" hits="4" branch="False" />
-                <line number="90" hits="4" branch="False" />
-                <line number="91" hits="4" branch="False" />
-                <line number="92" hits="4" branch="False" />
-                <line number="93" hits="4" branch="False" />
-                <line number="94" hits="4" branch="False" />
-                <line number="95" hits="4" branch="False" />
-                <line number="96" hits="8" branch="False" />
-                <line number="99" hits="4" branch="False" />
-                <line number="100" hits="4" branch="False" />
-                <line number="101" hits="4" branch="False" />
-                <line number="102" hits="4" branch="False" />
-                <line number="103" hits="4" branch="False" />
-                <line number="104" hits="4" branch="False" />
-                <line number="105" hits="4" branch="False" />
-                <line number="106" hits="4" branch="False" />
-                <line number="107" hits="4" branch="False" />
-                <line number="108" hits="4" branch="False" />
-                <line number="109" hits="4" branch="False" />
-                <line number="110" hits="4" branch="False" />
-                <line number="111" hits="4" branch="False" />
-                <line number="112" hits="4" branch="False" />
-                <line number="113" hits="4" branch="False" />
-                <line number="114" hits="4" branch="False" />
-                <line number="115" hits="4" branch="False" />
-                <line number="116" hits="4" branch="False" />
-                <line number="117" hits="8" branch="False" />
-                <line number="120" hits="4" branch="False" />
-                <line number="121" hits="4" branch="False" />
-                <line number="122" hits="4" branch="False" />
-                <line number="123" hits="4" branch="False" />
-                <line number="124" hits="4" branch="False" />
-                <line number="125" hits="4" branch="False" />
-                <line number="126" hits="4" branch="False" />
-                <line number="127" hits="4" branch="False" />
-                <line number="128" hits="4" branch="False" />
-                <line number="129" hits="4" branch="False" />
-                <line number="130" hits="4" branch="False" />
-                <line number="131" hits="4" branch="False" />
-                <line number="132" hits="4" branch="False" />
-                <line number="133" hits="4" branch="False" />
-                <line number="134" hits="4" branch="False" />
-                <line number="135" hits="4" branch="False" />
-                <line number="136" hits="4" branch="False" />
-                <line number="137" hits="4" branch="False" />
-                <line number="138" hits="4" branch="False" />
-                <line number="139" hits="4" branch="False" />
-                <line number="140" hits="4" branch="False" />
-                <line number="141" hits="4" branch="False" />
-                <line number="142" hits="4" branch="False" />
-                <line number="143" hits="8" branch="False" />
-                <line number="146" hits="4" branch="False" />
-                <line number="147" hits="4" branch="False" />
-                <line number="148" hits="4" branch="False" />
-                <line number="149" hits="4" branch="False" />
-                <line number="150" hits="4" branch="False" />
-                <line number="151" hits="4" branch="False" />
-                <line number="152" hits="4" branch="False" />
-                <line number="153" hits="8" branch="False" />
-                <line number="156" hits="4" branch="False" />
-                <line number="157" hits="4" branch="False" />
-                <line number="158" hits="4" branch="False" />
-                <line number="159" hits="4" branch="False" />
-                <line number="160" hits="4" branch="False" />
-                <line number="161" hits="4" branch="False" />
-                <line number="162" hits="4" branch="False" />
-                <line number="163" hits="4" branch="False" />
-                <line number="164" hits="4" branch="False" />
-                <line number="165" hits="4" branch="False" />
-                <line number="166" hits="4" branch="False" />
-                <line number="167" hits="8" branch="False" />
-                <line number="170" hits="4" branch="False" />
-                <line number="171" hits="4" branch="False" />
-                <line number="172" hits="4" branch="False" />
-                <line number="173" hits="4" branch="False" />
-                <line number="174" hits="4" branch="False" />
-                <line number="175" hits="4" branch="False" />
-                <line number="176" hits="4" branch="False" />
-                <line number="177" hits="4" branch="False" />
-                <line number="178" hits="4" branch="False" />
-                <line number="179" hits="4" branch="False" />
-                <line number="180" hits="4" branch="False" />
-                <line number="181" hits="4" branch="False" />
-                <line number="182" hits="4" branch="False" />
-                <line number="183" hits="4" branch="False" />
-                <line number="184" hits="4" branch="False" />
-                <line number="185" hits="4" branch="False" />
-                <line number="186" hits="4" branch="False" />
-                <line number="187" hits="4" branch="False" />
-                <line number="188" hits="4" branch="False" />
-                <line number="189" hits="4" branch="False" />
-                <line number="190" hits="8" branch="False" />
-                <line number="193" hits="4" branch="False" />
-                <line number="194" hits="4" branch="False" />
-                <line number="195" hits="4" branch="False" />
-                <line number="196" hits="4" branch="False" />
-                <line number="197" hits="4" branch="False" />
-                <line number="198" hits="4" branch="False" />
-                <line number="199" hits="4" branch="False" />
-                <line number="200" hits="4" branch="False" />
-                <line number="201" hits="4" branch="False" />
-                <line number="202" hits="4" branch="False" />
-                <line number="203" hits="4" branch="False" />
-                <line number="204" hits="8" branch="False" />
-                <line number="207" hits="4" branch="False" />
-                <line number="208" hits="4" branch="False" />
-                <line number="209" hits="4" branch="False" />
-                <line number="210" hits="4" branch="False" />
-                <line number="211" hits="4" branch="False" />
-                <line number="212" hits="4" branch="False" />
-                <line number="213" hits="4" branch="False" />
-                <line number="214" hits="4" branch="False" />
-                <line number="215" hits="4" branch="False" />
-                <line number="216" hits="4" branch="False" />
-                <line number="217" hits="4" branch="False" />
-                <line number="218" hits="4" branch="False" />
-                <line number="219" hits="4" branch="False" />
-                <line number="220" hits="4" branch="False" />
-                <line number="221" hits="4" branch="False" />
-                <line number="222" hits="4" branch="False" />
-                <line number="223" hits="8" branch="False" />
-                <line number="226" hits="4" branch="False" />
-                <line number="227" hits="4" branch="False" />
-                <line number="228" hits="4" branch="False" />
-                <line number="229" hits="4" branch="False" />
-                <line number="230" hits="4" branch="False" />
-                <line number="231" hits="4" branch="False" />
-                <line number="232" hits="4" branch="False" />
-                <line number="233" hits="4" branch="False" />
-                <line number="234" hits="4" branch="False" />
-                <line number="235" hits="4" branch="False" />
-                <line number="236" hits="4" branch="False" />
-                <line number="237" hits="4" branch="False" />
-                <line number="238" hits="4" branch="False" />
-                <line number="239" hits="4" branch="False" />
-                <line number="240" hits="8" branch="False" />
-                <line number="243" hits="4" branch="False" />
-                <line number="244" hits="4" branch="False" />
-                <line number="245" hits="4" branch="False" />
-                <line number="246" hits="4" branch="False" />
-                <line number="247" hits="4" branch="False" />
-                <line number="248" hits="4" branch="False" />
-                <line number="249" hits="4" branch="False" />
-                <line number="250" hits="8" branch="False" />
-                <line number="253" hits="4" branch="False" />
-                <line number="254" hits="4" branch="False" />
-                <line number="255" hits="4" branch="False" />
-                <line number="256" hits="4" branch="False" />
-                <line number="257" hits="4" branch="False" />
-                <line number="258" hits="4" branch="False" />
-                <line number="259" hits="4" branch="False" />
-                <line number="260" hits="4" branch="False" />
-                <line number="261" hits="4" branch="False" />
-                <line number="262" hits="4" branch="False" />
-                <line number="263" hits="4" branch="False" />
-                <line number="264" hits="4" branch="False" />
-                <line number="265" hits="8" branch="False" />
-                <line number="268" hits="4" branch="False" />
-                <line number="269" hits="4" branch="False" />
-                <line number="270" hits="4" branch="False" />
-                <line number="271" hits="4" branch="False" />
-                <line number="272" hits="4" branch="False" />
-                <line number="273" hits="4" branch="False" />
-                <line number="274" hits="4" branch="False" />
-                <line number="275" hits="4" branch="False" />
-                <line number="276" hits="4" branch="False" />
-                <line number="277" hits="4" branch="False" />
-                <line number="278" hits="4" branch="False" />
-                <line number="279" hits="4" branch="False" />
-                <line number="280" hits="4" branch="False" />
-                <line number="281" hits="4" branch="False" />
-                <line number="282" hits="8" branch="False" />
-                <line number="285" hits="4" branch="False" />
-                <line number="286" hits="4" branch="False" />
-                <line number="287" hits="4" branch="False" />
-                <line number="288" hits="4" branch="False" />
-                <line number="289" hits="4" branch="False" />
-                <line number="290" hits="4" branch="False" />
-                <line number="291" hits="4" branch="False" />
-                <line number="292" hits="4" branch="False" />
-                <line number="293" hits="4" branch="False" />
-                <line number="294" hits="4" branch="False" />
-                <line number="295" hits="4" branch="False" />
-                <line number="296" hits="4" branch="False" />
-                <line number="297" hits="4" branch="False" />
-                <line number="298" hits="8" branch="False" />
-                <line number="301" hits="4" branch="False" />
-                <line number="302" hits="4" branch="False" />
-                <line number="303" hits="4" branch="False" />
-                <line number="304" hits="4" branch="False" />
-                <line number="305" hits="4" branch="False" />
-                <line number="306" hits="4" branch="False" />
-                <line number="307" hits="4" branch="False" />
-                <line number="308" hits="4" branch="False" />
-                <line number="309" hits="4" branch="False" />
-                <line number="310" hits="4" branch="False" />
-                <line number="311" hits="4" branch="False" />
-                <line number="312" hits="8" branch="False" />
-                <line number="315" hits="136" branch="True" condition-coverage="100% (2/2)">
-                  <conditions>
-                    <condition number="701" type="jump" coverage="100%" />
-                  </conditions>
-                </line>
-                <line number="316" hits="1432" branch="True" condition-coverage="100% (2/2)">
-                  <conditions>
-                    <condition number="681" type="jump" coverage="100%" />
-                  </conditions>
-                </line>
-                <line number="317" hits="652" branch="False" />
-                <line number="318" hits="4" branch="False" />
-              </lines>
-            </method>
             <method name="ToSnakeCase" signature="(System.String)" line-rate="1" branch-rate="1" complexity="6">
               <lines>
-                <line number="322" hits="652" branch="False" />
-                <line number="323" hits="13360" branch="True" condition-coverage="100% (2/2)">
+                <line number="323" hits="652" branch="False" />
+                <line number="324" hits="13360" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
                     <condition number="71" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="325" hits="6028" branch="False" />
-                <line number="326" hits="6636" branch="True" condition-coverage="100% (4/4)">
+                <line number="326" hits="6028" branch="False" />
+                <line number="327" hits="6636" branch="True" condition-coverage="100% (4/4)">
                   <conditions>
                     <condition number="32" type="jump" coverage="100%" />
                     <condition number="36" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="327" hits="6028" branch="False" />
-                <line number="329" hits="652" branch="False" />
+                <line number="328" hits="6028" branch="False" />
+                <line number="330" hits="652" branch="False" />
               </lines>
             </method>
             <method name=".ctor" signature="(Microsoft.EntityFrameworkCore.DbContextOptions`1&lt;Approval.Infrastructure.Persistence.ApprovalDbContext&gt;)" line-rate="1" branch-rate="1" complexity="1">
@@ -11194,19 +10955,290 @@
             <line number="47" hits="24" branch="False" />
             <line number="48" hits="4" branch="False" />
             <line number="49" hits="0" branch="False" />
-            <line number="58" hits="4" branch="False" />
-            <line number="61" hits="4" branch="False" />
-            <line number="62" hits="4" branch="False" />
-            <line number="63" hits="4" branch="False" />
+            <line number="323" hits="652" branch="False" />
+            <line number="324" hits="13360" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="71" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="326" hits="6028" branch="False" />
+            <line number="327" hits="6636" branch="True" condition-coverage="100% (4/4)">
+              <conditions>
+                <condition number="32" type="jump" coverage="100%" />
+                <condition number="36" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="328" hits="6028" branch="False" />
+            <line number="330" hits="652" branch="False" />
+            <line number="13" hits="64" branch="False" />
+            <line number="15" hits="64" branch="False" />
+          </lines>
+        </class>
+        <class name="Approval.Infrastructure.Persistence.ApprovalDbContext/&lt;&gt;c" filename="Approval.Infrastructure\Persistence\ApprovalDbContext.cs" line-rate="1" branch-rate="1" complexity="16">
+          <methods>
+            <method name="&lt;OnModelCreating&gt;b__66_0" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowDefinition&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="64" hits="4" branch="False" />
+                <line number="65" hits="4" branch="False" />
+                <line number="66" hits="4" branch="False" />
+                <line number="67" hits="4" branch="False" />
+                <line number="68" hits="4" branch="False" />
+                <line number="69" hits="4" branch="False" />
+                <line number="70" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_1" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowDefinitionVersion&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="75" hits="4" branch="False" />
+                <line number="76" hits="4" branch="False" />
+                <line number="77" hits="4" branch="False" />
+                <line number="78" hits="4" branch="False" />
+                <line number="79" hits="4" branch="False" />
+                <line number="80" hits="4" branch="False" />
+                <line number="81" hits="4" branch="False" />
+                <line number="82" hits="4" branch="False" />
+                <line number="83" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_2" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowBinding&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="88" hits="4" branch="False" />
+                <line number="89" hits="4" branch="False" />
+                <line number="90" hits="4" branch="False" />
+                <line number="91" hits="4" branch="False" />
+                <line number="92" hits="4" branch="False" />
+                <line number="93" hits="4" branch="False" />
+                <line number="94" hits="4" branch="False" />
+                <line number="95" hits="4" branch="False" />
+                <line number="96" hits="4" branch="False" />
+                <line number="97" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_3" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowRule&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="102" hits="4" branch="False" />
+                <line number="103" hits="4" branch="False" />
+                <line number="104" hits="4" branch="False" />
+                <line number="105" hits="4" branch="False" />
+                <line number="106" hits="4" branch="False" />
+                <line number="107" hits="4" branch="False" />
+                <line number="108" hits="4" branch="False" />
+                <line number="109" hits="4" branch="False" />
+                <line number="110" hits="4" branch="False" />
+                <line number="111" hits="4" branch="False" />
+                <line number="112" hits="4" branch="False" />
+                <line number="113" hits="4" branch="False" />
+                <line number="114" hits="4" branch="False" />
+                <line number="115" hits="4" branch="False" />
+                <line number="116" hits="4" branch="False" />
+                <line number="117" hits="4" branch="False" />
+                <line number="118" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_4" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowInstance&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="123" hits="4" branch="False" />
+                <line number="124" hits="4" branch="False" />
+                <line number="125" hits="4" branch="False" />
+                <line number="126" hits="4" branch="False" />
+                <line number="127" hits="4" branch="False" />
+                <line number="128" hits="4" branch="False" />
+                <line number="129" hits="4" branch="False" />
+                <line number="130" hits="4" branch="False" />
+                <line number="131" hits="4" branch="False" />
+                <line number="132" hits="4" branch="False" />
+                <line number="133" hits="4" branch="False" />
+                <line number="134" hits="4" branch="False" />
+                <line number="135" hits="4" branch="False" />
+                <line number="136" hits="4" branch="False" />
+                <line number="137" hits="4" branch="False" />
+                <line number="138" hits="4" branch="False" />
+                <line number="139" hits="4" branch="False" />
+                <line number="140" hits="4" branch="False" />
+                <line number="141" hits="4" branch="False" />
+                <line number="142" hits="4" branch="False" />
+                <line number="143" hits="4" branch="False" />
+                <line number="144" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_5" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowSnapshot&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="149" hits="4" branch="False" />
+                <line number="150" hits="4" branch="False" />
+                <line number="151" hits="4" branch="False" />
+                <line number="152" hits="4" branch="False" />
+                <line number="153" hits="4" branch="False" />
+                <line number="154" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_6" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowNodeInstance&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="159" hits="4" branch="False" />
+                <line number="160" hits="4" branch="False" />
+                <line number="161" hits="4" branch="False" />
+                <line number="162" hits="4" branch="False" />
+                <line number="163" hits="4" branch="False" />
+                <line number="164" hits="4" branch="False" />
+                <line number="165" hits="4" branch="False" />
+                <line number="166" hits="4" branch="False" />
+                <line number="167" hits="4" branch="False" />
+                <line number="168" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_7" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowTask&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="173" hits="4" branch="False" />
+                <line number="174" hits="4" branch="False" />
+                <line number="175" hits="4" branch="False" />
+                <line number="176" hits="4" branch="False" />
+                <line number="177" hits="4" branch="False" />
+                <line number="178" hits="4" branch="False" />
+                <line number="179" hits="4" branch="False" />
+                <line number="180" hits="4" branch="False" />
+                <line number="181" hits="4" branch="False" />
+                <line number="182" hits="4" branch="False" />
+                <line number="183" hits="4" branch="False" />
+                <line number="184" hits="4" branch="False" />
+                <line number="185" hits="4" branch="False" />
+                <line number="186" hits="4" branch="False" />
+                <line number="187" hits="4" branch="False" />
+                <line number="188" hits="4" branch="False" />
+                <line number="189" hits="4" branch="False" />
+                <line number="190" hits="4" branch="False" />
+                <line number="191" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_8" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowTaskCandidate&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="196" hits="4" branch="False" />
+                <line number="197" hits="4" branch="False" />
+                <line number="198" hits="4" branch="False" />
+                <line number="199" hits="4" branch="False" />
+                <line number="200" hits="4" branch="False" />
+                <line number="201" hits="4" branch="False" />
+                <line number="202" hits="4" branch="False" />
+                <line number="203" hits="4" branch="False" />
+                <line number="204" hits="4" branch="False" />
+                <line number="205" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_9" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowActionLog&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="210" hits="4" branch="False" />
+                <line number="211" hits="4" branch="False" />
+                <line number="212" hits="4" branch="False" />
+                <line number="213" hits="4" branch="False" />
+                <line number="214" hits="4" branch="False" />
+                <line number="215" hits="4" branch="False" />
+                <line number="216" hits="4" branch="False" />
+                <line number="217" hits="4" branch="False" />
+                <line number="218" hits="4" branch="False" />
+                <line number="219" hits="4" branch="False" />
+                <line number="220" hits="4" branch="False" />
+                <line number="221" hits="4" branch="False" />
+                <line number="222" hits="4" branch="False" />
+                <line number="223" hits="4" branch="False" />
+                <line number="224" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_10" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowOutbox&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="229" hits="4" branch="False" />
+                <line number="230" hits="4" branch="False" />
+                <line number="231" hits="4" branch="False" />
+                <line number="232" hits="4" branch="False" />
+                <line number="233" hits="4" branch="False" />
+                <line number="234" hits="4" branch="False" />
+                <line number="235" hits="4" branch="False" />
+                <line number="236" hits="4" branch="False" />
+                <line number="237" hits="4" branch="False" />
+                <line number="238" hits="4" branch="False" />
+                <line number="239" hits="4" branch="False" />
+                <line number="240" hits="4" branch="False" />
+                <line number="241" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_11" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.WorkflowInbox&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="246" hits="4" branch="False" />
+                <line number="247" hits="4" branch="False" />
+                <line number="248" hits="4" branch="False" />
+                <line number="249" hits="4" branch="False" />
+                <line number="250" hits="4" branch="False" />
+                <line number="251" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_12" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.SapSyncState&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="256" hits="4" branch="False" />
+                <line number="257" hits="4" branch="False" />
+                <line number="258" hits="4" branch="False" />
+                <line number="259" hits="4" branch="False" />
+                <line number="260" hits="4" branch="False" />
+                <line number="261" hits="4" branch="False" />
+                <line number="262" hits="4" branch="False" />
+                <line number="263" hits="4" branch="False" />
+                <line number="264" hits="4" branch="False" />
+                <line number="265" hits="4" branch="False" />
+                <line number="266" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_13" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.SysUserMapping&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="271" hits="4" branch="False" />
+                <line number="272" hits="4" branch="False" />
+                <line number="273" hits="4" branch="False" />
+                <line number="274" hits="4" branch="False" />
+                <line number="275" hits="4" branch="False" />
+                <line number="276" hits="4" branch="False" />
+                <line number="277" hits="4" branch="False" />
+                <line number="278" hits="4" branch="False" />
+                <line number="279" hits="4" branch="False" />
+                <line number="280" hits="4" branch="False" />
+                <line number="281" hits="4" branch="False" />
+                <line number="282" hits="4" branch="False" />
+                <line number="283" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_14" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.SysNotification&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="288" hits="4" branch="False" />
+                <line number="289" hits="4" branch="False" />
+                <line number="290" hits="4" branch="False" />
+                <line number="291" hits="4" branch="False" />
+                <line number="292" hits="4" branch="False" />
+                <line number="293" hits="4" branch="False" />
+                <line number="294" hits="4" branch="False" />
+                <line number="295" hits="4" branch="False" />
+                <line number="296" hits="4" branch="False" />
+                <line number="297" hits="4" branch="False" />
+                <line number="298" hits="4" branch="False" />
+                <line number="299" hits="4" branch="False" />
+              </lines>
+            </method>
+            <method name="&lt;OnModelCreating&gt;b__66_15" signature="(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder`1&lt;Approval.Domain.Entities.SysUiLayout&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="304" hits="4" branch="False" />
+                <line number="305" hits="4" branch="False" />
+                <line number="306" hits="4" branch="False" />
+                <line number="307" hits="4" branch="False" />
+                <line number="308" hits="4" branch="False" />
+                <line number="309" hits="4" branch="False" />
+                <line number="310" hits="4" branch="False" />
+                <line number="311" hits="4" branch="False" />
+                <line number="312" hits="4" branch="False" />
+                <line number="313" hits="4" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
             <line number="64" hits="4" branch="False" />
             <line number="65" hits="4" branch="False" />
             <line number="66" hits="4" branch="False" />
             <line number="67" hits="4" branch="False" />
             <line number="68" hits="4" branch="False" />
-            <line number="69" hits="8" branch="False" />
-            <line number="72" hits="4" branch="False" />
-            <line number="73" hits="4" branch="False" />
-            <line number="74" hits="4" branch="False" />
+            <line number="69" hits="4" branch="False" />
+            <line number="70" hits="4" branch="False" />
             <line number="75" hits="4" branch="False" />
             <line number="76" hits="4" branch="False" />
             <line number="77" hits="4" branch="False" />
@@ -11214,10 +11246,8 @@
             <line number="79" hits="4" branch="False" />
             <line number="80" hits="4" branch="False" />
             <line number="81" hits="4" branch="False" />
-            <line number="82" hits="8" branch="False" />
-            <line number="85" hits="4" branch="False" />
-            <line number="86" hits="4" branch="False" />
-            <line number="87" hits="4" branch="False" />
+            <line number="82" hits="4" branch="False" />
+            <line number="83" hits="4" branch="False" />
             <line number="88" hits="4" branch="False" />
             <line number="89" hits="4" branch="False" />
             <line number="90" hits="4" branch="False" />
@@ -11226,10 +11256,8 @@
             <line number="93" hits="4" branch="False" />
             <line number="94" hits="4" branch="False" />
             <line number="95" hits="4" branch="False" />
-            <line number="96" hits="8" branch="False" />
-            <line number="99" hits="4" branch="False" />
-            <line number="100" hits="4" branch="False" />
-            <line number="101" hits="4" branch="False" />
+            <line number="96" hits="4" branch="False" />
+            <line number="97" hits="4" branch="False" />
             <line number="102" hits="4" branch="False" />
             <line number="103" hits="4" branch="False" />
             <line number="104" hits="4" branch="False" />
@@ -11245,10 +11273,8 @@
             <line number="114" hits="4" branch="False" />
             <line number="115" hits="4" branch="False" />
             <line number="116" hits="4" branch="False" />
-            <line number="117" hits="8" branch="False" />
-            <line number="120" hits="4" branch="False" />
-            <line number="121" hits="4" branch="False" />
-            <line number="122" hits="4" branch="False" />
+            <line number="117" hits="4" branch="False" />
+            <line number="118" hits="4" branch="False" />
             <line number="123" hits="4" branch="False" />
             <line number="124" hits="4" branch="False" />
             <line number="125" hits="4" branch="False" />
@@ -11269,18 +11295,14 @@
             <line number="140" hits="4" branch="False" />
             <line number="141" hits="4" branch="False" />
             <line number="142" hits="4" branch="False" />
-            <line number="143" hits="8" branch="False" />
-            <line number="146" hits="4" branch="False" />
-            <line number="147" hits="4" branch="False" />
-            <line number="148" hits="4" branch="False" />
+            <line number="143" hits="4" branch="False" />
+            <line number="144" hits="4" branch="False" />
             <line number="149" hits="4" branch="False" />
             <line number="150" hits="4" branch="False" />
             <line number="151" hits="4" branch="False" />
             <line number="152" hits="4" branch="False" />
-            <line number="153" hits="8" branch="False" />
-            <line number="156" hits="4" branch="False" />
-            <line number="157" hits="4" branch="False" />
-            <line number="158" hits="4" branch="False" />
+            <line number="153" hits="4" branch="False" />
+            <line number="154" hits="4" branch="False" />
             <line number="159" hits="4" branch="False" />
             <line number="160" hits="4" branch="False" />
             <line number="161" hits="4" branch="False" />
@@ -11289,10 +11311,8 @@
             <line number="164" hits="4" branch="False" />
             <line number="165" hits="4" branch="False" />
             <line number="166" hits="4" branch="False" />
-            <line number="167" hits="8" branch="False" />
-            <line number="170" hits="4" branch="False" />
-            <line number="171" hits="4" branch="False" />
-            <line number="172" hits="4" branch="False" />
+            <line number="167" hits="4" branch="False" />
+            <line number="168" hits="4" branch="False" />
             <line number="173" hits="4" branch="False" />
             <line number="174" hits="4" branch="False" />
             <line number="175" hits="4" branch="False" />
@@ -11310,10 +11330,8 @@
             <line number="187" hits="4" branch="False" />
             <line number="188" hits="4" branch="False" />
             <line number="189" hits="4" branch="False" />
-            <line number="190" hits="8" branch="False" />
-            <line number="193" hits="4" branch="False" />
-            <line number="194" hits="4" branch="False" />
-            <line number="195" hits="4" branch="False" />
+            <line number="190" hits="4" branch="False" />
+            <line number="191" hits="4" branch="False" />
             <line number="196" hits="4" branch="False" />
             <line number="197" hits="4" branch="False" />
             <line number="198" hits="4" branch="False" />
@@ -11322,10 +11340,8 @@
             <line number="201" hits="4" branch="False" />
             <line number="202" hits="4" branch="False" />
             <line number="203" hits="4" branch="False" />
-            <line number="204" hits="8" branch="False" />
-            <line number="207" hits="4" branch="False" />
-            <line number="208" hits="4" branch="False" />
-            <line number="209" hits="4" branch="False" />
+            <line number="204" hits="4" branch="False" />
+            <line number="205" hits="4" branch="False" />
             <line number="210" hits="4" branch="False" />
             <line number="211" hits="4" branch="False" />
             <line number="212" hits="4" branch="False" />
@@ -11339,10 +11355,8 @@
             <line number="220" hits="4" branch="False" />
             <line number="221" hits="4" branch="False" />
             <line number="222" hits="4" branch="False" />
-            <line number="223" hits="8" branch="False" />
-            <line number="226" hits="4" branch="False" />
-            <line number="227" hits="4" branch="False" />
-            <line number="228" hits="4" branch="False" />
+            <line number="223" hits="4" branch="False" />
+            <line number="224" hits="4" branch="False" />
             <line number="229" hits="4" branch="False" />
             <line number="230" hits="4" branch="False" />
             <line number="231" hits="4" branch="False" />
@@ -11354,18 +11368,14 @@
             <line number="237" hits="4" branch="False" />
             <line number="238" hits="4" branch="False" />
             <line number="239" hits="4" branch="False" />
-            <line number="240" hits="8" branch="False" />
-            <line number="243" hits="4" branch="False" />
-            <line number="244" hits="4" branch="False" />
-            <line number="245" hits="4" branch="False" />
+            <line number="240" hits="4" branch="False" />
+            <line number="241" hits="4" branch="False" />
             <line number="246" hits="4" branch="False" />
             <line number="247" hits="4" branch="False" />
             <line number="248" hits="4" branch="False" />
             <line number="249" hits="4" branch="False" />
-            <line number="250" hits="8" branch="False" />
-            <line number="253" hits="4" branch="False" />
-            <line number="254" hits="4" branch="False" />
-            <line number="255" hits="4" branch="False" />
+            <line number="250" hits="4" branch="False" />
+            <line number="251" hits="4" branch="False" />
             <line number="256" hits="4" branch="False" />
             <line number="257" hits="4" branch="False" />
             <line number="258" hits="4" branch="False" />
@@ -11375,10 +11385,8 @@
             <line number="262" hits="4" branch="False" />
             <line number="263" hits="4" branch="False" />
             <line number="264" hits="4" branch="False" />
-            <line number="265" hits="8" branch="False" />
-            <line number="268" hits="4" branch="False" />
-            <line number="269" hits="4" branch="False" />
-            <line number="270" hits="4" branch="False" />
+            <line number="265" hits="4" branch="False" />
+            <line number="266" hits="4" branch="False" />
             <line number="271" hits="4" branch="False" />
             <line number="272" hits="4" branch="False" />
             <line number="273" hits="4" branch="False" />
@@ -11390,10 +11398,8 @@
             <line number="279" hits="4" branch="False" />
             <line number="280" hits="4" branch="False" />
             <line number="281" hits="4" branch="False" />
-            <line number="282" hits="8" branch="False" />
-            <line number="285" hits="4" branch="False" />
-            <line number="286" hits="4" branch="False" />
-            <line number="287" hits="4" branch="False" />
+            <line number="282" hits="4" branch="False" />
+            <line number="283" hits="4" branch="False" />
             <line number="288" hits="4" branch="False" />
             <line number="289" hits="4" branch="False" />
             <line number="290" hits="4" branch="False" />
@@ -11404,10 +11410,8 @@
             <line number="295" hits="4" branch="False" />
             <line number="296" hits="4" branch="False" />
             <line number="297" hits="4" branch="False" />
-            <line number="298" hits="8" branch="False" />
-            <line number="301" hits="4" branch="False" />
-            <line number="302" hits="4" branch="False" />
-            <line number="303" hits="4" branch="False" />
+            <line number="298" hits="4" branch="False" />
+            <line number="299" hits="4" branch="False" />
             <line number="304" hits="4" branch="False" />
             <line number="305" hits="4" branch="False" />
             <line number="306" hits="4" branch="False" />
@@ -11416,36 +11420,8 @@
             <line number="309" hits="4" branch="False" />
             <line number="310" hits="4" branch="False" />
             <line number="311" hits="4" branch="False" />
-            <line number="312" hits="8" branch="False" />
-            <line number="315" hits="136" branch="True" condition-coverage="100% (2/2)">
-              <conditions>
-                <condition number="701" type="jump" coverage="100%" />
-              </conditions>
-            </line>
-            <line number="316" hits="1432" branch="True" condition-coverage="100% (2/2)">
-              <conditions>
-                <condition number="681" type="jump" coverage="100%" />
-              </conditions>
-            </line>
-            <line number="317" hits="652" branch="False" />
-            <line number="318" hits="4" branch="False" />
-            <line number="322" hits="652" branch="False" />
-            <line number="323" hits="13360" branch="True" condition-coverage="100% (2/2)">
-              <conditions>
-                <condition number="71" type="jump" coverage="100%" />
-              </conditions>
-            </line>
-            <line number="325" hits="6028" branch="False" />
-            <line number="326" hits="6636" branch="True" condition-coverage="100% (4/4)">
-              <conditions>
-                <condition number="32" type="jump" coverage="100%" />
-                <condition number="36" type="jump" coverage="100%" />
-              </conditions>
-            </line>
-            <line number="327" hits="6028" branch="False" />
-            <line number="329" hits="652" branch="False" />
-            <line number="13" hits="64" branch="False" />
-            <line number="15" hits="64" branch="False" />
+            <line number="312" hits="4" branch="False" />
+            <line number="313" hits="4" branch="False" />
           </lines>
         </class>
         <class name="Approval.Infrastructure.Persistence.ApprovalDbContext/&lt;AddAsync&gt;d__65`1" filename="Approval.Infrastructure\Persistence\ApprovalDbContext.cs" line-rate="1" branch-rate="1" complexity="1">

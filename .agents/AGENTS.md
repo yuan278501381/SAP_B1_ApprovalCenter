@@ -37,17 +37,17 @@
 </RULE[reliability_and_security_rules]>
 
 <RULE[code_coverage_and_quality_gates]>
-## 4. 世界级代码覆盖率标准与质量门禁 (Code Coverage & Quality Gates)
+## 4. 世界级代码覆盖率标准与质量门禁 (Code Coverage & Quality Gates: 100%)
 * **高价值业务驱动原则**:
   - 绝不为了刷行数去测试无逻辑的样板代码；
   - 统一通过 `[ExcludeFromCodeCoverage]` 明确排除：EF Core `Migrations`、数据传输对象（DTOs）、配置 Options 绑定类及 `Program.cs` 样板代码。
-* **分层质量门禁基准 (Quality Gate Baselines: 95%+)**:
-  1. **👑 核心领域层 (`Approval.Domain`)**: 综合覆盖率目标 $\ge 95\% \sim 98\%$（必须 100% 覆盖 SHA-256 规范化快照、防篡改熔断、审批全状态机流转与 Outbox 幂等状态）；
-  2. **🎯 规则矩阵与应用服务层 (`Approval.Application`)**: 覆盖率目标 $\ge 95\%$（覆盖单值比较操作符、子表高级聚合 `Sum`/`Avg`/`Min`/`Max`/`Count`、`Any`/`All` 模式、条件网关与主管追溯）；
-  3. **🛡️ 适配器与基础设施层 (`Approval.Infrastructure` / `SapAdapter`)**: 覆盖率目标 $\ge 95\%$（覆盖多级缓存命中、磁盘持久化原子落盘容灾与 Service Layer 状态同步）。
+* **分层质量门禁基准 (Quality Gate Baselines: 100%)**:
+  1. **👑 核心领域层 (`Approval.Domain`)**: 综合覆盖率目标 **100%**（100% 覆盖 SHA-256 规范化快照、防篡改熔断、审批全状态机流转与 Outbox 幂等状态）；
+  2. **🎯 规则矩阵与应用服务层 (`Approval.Application`)**: 覆盖率目标 **100%**（100% 覆盖单值比较操作符、子表高级聚合 `Sum`/`Avg`/`Min`/`Max`/`Count`、`Any`/`All` 模式、条件网关与主管追溯）；
+  3. **🛡️ 适配器与基础设施层 (`Approval.Infrastructure` / `SapAdapter`)**: 覆盖率目标 **100%**（100% 覆盖多级缓存命中、磁盘持久化原子落盘容灾与 Service Layer 状态同步）。
 * **DevOps CI/CD 自动化门禁**:
   - 打包流水线必须自动执行 `dotnet test --collect:"XPlat Code Coverage"` 并解析 Cobertura XML 报告；
-  - 若核心业务覆盖率低于 95%，严禁放行构建与分发。
+  - 若核心业务覆盖率低于 100%，严禁放行构建与分发。
 </RULE[code_coverage_and_quality_gates]>
 
 <RULE[dynamic_metadata_and_observability]>

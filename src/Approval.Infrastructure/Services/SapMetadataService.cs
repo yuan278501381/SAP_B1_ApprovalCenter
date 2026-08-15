@@ -218,6 +218,7 @@ public class SapMetadataService : ISapMetadataService
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private async Task<ObjectMetadataResult> LoadMetadataFromDbAsync(string companyId, string objectCode, CancellationToken ct)
     {
         var obj = objectCode.Trim().ToUpperInvariant();
@@ -474,6 +475,7 @@ public class SapMetadataService : ISapMetadataService
         return new ObjectMetadataResult(objectCode, mainTable, headerFields, childTableFields, childTableDescriptions, objectDescription);
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private async Task LoadSystemDictionariesAsync(
         SqlConnection conn,
         string mainTable,

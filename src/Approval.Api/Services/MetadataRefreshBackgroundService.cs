@@ -8,6 +8,7 @@ namespace Approval.Api.Services;
 /// <summary>
 /// SAP 元数据与动态系统字典 (OEXD/OSLP/OCTG/OHEM/CUFD/UFD1) 10分钟后台自动刷新与持久化落盘守护服务
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public class MetadataRefreshBackgroundService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;

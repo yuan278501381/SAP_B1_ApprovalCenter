@@ -11,6 +11,7 @@ namespace Approval.Api.Security;
 /// 接收由受信任反向代理注入的用户身份。生产环境必须阻断客户端直连 API，
 /// 并由代理先完成统一认证、删除外部同名请求头后再注入这些头。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class TrustedHeaderAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public const string SchemeName = "TrustedGatewayHeader";

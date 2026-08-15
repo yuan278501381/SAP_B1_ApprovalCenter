@@ -226,4 +226,5 @@ finally
 }
 
 // 使得集成测试可引用 Program
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public partial class Program { }

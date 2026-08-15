@@ -285,6 +285,43 @@ public class TasksController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// 转交任务给他人处理
+    /// </summary>
+    [HttpPost("{taskId}/forward")]
+    public async Task<ActionResult<ApiResponse<object>>> ForwardTask(
+        string taskId,
+        [FromBody] ForwardRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _engine.ForwardTaskAsync(
+                taskId,
+                CurrentUserCode,
+                CurrentUserName,
+                request.TargetUserCode,
+                request.TargetUserName,
+                request.Comments,
+                ct);
+
+            return Ok(ApiResponse<object>.Ok(new { TaskId = taskId, Status = "Forwarded", request.TargetUserCode }, _traceContext.TraceId));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail("FORWARD_FORBIDDEN", ex.Message, _traceContext.TraceId));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail("FORWARD_FAILED", ex.Message, _traceContext.TraceId));
+        }
+    }
+
     private string CurrentUserCode => User.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? throw new UnauthorizedAccessException("缺少用户身份");
+
+    private string? CurrentUserName => User.FindFirstValue(ClaimTypes.Name);
 }
+
+public record ForwardRequest(string TargetUserCode, string? TargetUserName, string? Comments);

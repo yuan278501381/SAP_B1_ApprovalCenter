@@ -26,6 +26,7 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
     public DbSet<WorkflowOutbox> Outboxes => Set<WorkflowOutbox>();
     public DbSet<WorkflowInbox> Inboxes => Set<WorkflowInbox>();
     public DbSet<SapSyncState> SapSyncStates => Set<SapSyncState>();
+    public DbSet<SysUserMapping> UserMappings => Set<SysUserMapping>();
 
     IQueryable<WorkflowDefinition> IApprovalDbContext.Definitions => Definitions;
     IQueryable<WorkflowDefinitionVersion> IApprovalDbContext.DefinitionVersions => DefinitionVersions;
@@ -39,6 +40,7 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
     IQueryable<WorkflowOutbox> IApprovalDbContext.Outboxes => Outboxes;
     IQueryable<WorkflowInbox> IApprovalDbContext.Inboxes => Inboxes;
     IQueryable<SapSyncState> IApprovalDbContext.SapSyncStates => SapSyncStates;
+    IQueryable<SysUserMapping> IApprovalDbContext.UserMappings => UserMappings;
 
     public new async Task AddAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
     {
@@ -223,6 +225,23 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.LastSyncedStatus).HasMaxLength(32);
             b.Property(x => x.SyncStatus).HasMaxLength(32);
             b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.ObjectKey }).IsUnique();
+        });
+
+        // sys_user_mapping
+        modelBuilder.Entity<SysUserMapping>(b =>
+        {
+            b.ToTable("sys_user_mapping");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasMaxLength(64);
+            b.Property(x => x.SapUserCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.AdUserCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.DisplayName).HasMaxLength(128).IsRequired();
+            b.Property(x => x.Department).HasMaxLength(128);
+            b.Property(x => x.ManagerCode).HasMaxLength(64);
+            b.Property(x => x.Roles).HasMaxLength(500);
+            b.Property(x => x.DelegateUserCode).HasMaxLength(64);
+            b.HasIndex(x => x.SapUserCode).IsUnique();
+            b.HasIndex(x => x.AdUserCode).IsUnique();
         });
 
         // SQL 初始化脚本使用 snake_case；显式统一列名，避免 EF 默认 PascalCase 与 DDL 不匹配。

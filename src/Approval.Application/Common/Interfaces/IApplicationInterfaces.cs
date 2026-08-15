@@ -18,9 +18,22 @@ public interface IApprovalDbContext
     IQueryable<WorkflowOutbox> Outboxes { get; }
     IQueryable<WorkflowInbox> Inboxes { get; }
     IQueryable<SapSyncState> SapSyncStates { get; }
+    IQueryable<SysUserMapping> UserMappings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task AddAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
+}
+
+public interface IUserDirectoryService
+{
+    /// <summary>
+    /// 解析审批候选人 (支持直接指定、直属主管追溯、岗位角色过滤、委托代理人)
+    /// </summary>
+    Task<List<string>> ResolveCandidatesAsync(
+        CandidateType type,
+        IEnumerable<string> candidateValues,
+        string submitterCode,
+        CancellationToken ct = default);
 }
 
 public interface ITraceContext
@@ -52,6 +65,18 @@ public interface IWorkflowEngine
         string operatorCode,
         string? operatorName,
         TaskDecision decision,
+        string? comments,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// 任务转交 (Forward): 将当前任务直接移交给指定人
+    /// </summary>
+    Task ForwardTaskAsync(
+        string taskId,
+        string operatorCode,
+        string? operatorName,
+        string targetUserCode,
+        string? targetUserName,
         string? comments,
         CancellationToken ct = default);
 }

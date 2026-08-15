@@ -10,19 +10,21 @@ using TaskStatus = Approval.Domain.Enums.TaskStatus;
 namespace Approval.Application.Services;
 
 /// <summary>
-/// 轻量审批状态机。当前可靠支持：条件分支、串行审批、同意、拒绝、退回。
-/// 并行、会签、角色解析尚未实现，流程发布前会被明确拒绝，避免静默走错流程。
+/// 企业级审批工作流引擎。
+/// 支持：条件分支、动态多选人(Direct/Manager/Role/Delegate)、串行与会签、同意/拒绝/退回/转交。
 /// </summary>
 public class WorkflowEngine : IWorkflowEngine
 {
     private static readonly JsonSerializerOptions GraphJsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly IApprovalDbContext _db;
     private readonly ITraceContext _traceContext;
+    private readonly IUserDirectoryService _userDirectoryService;
 
-    public WorkflowEngine(IApprovalDbContext db, ITraceContext traceContext)
+    public WorkflowEngine(IApprovalDbContext db, ITraceContext traceContext, IUserDirectoryService userDirectoryService)
     {
         _db = db;
         _traceContext = traceContext;
+        _userDirectoryService = userDirectoryService;
     }
 
     public async Task<WorkflowInstance> StartWorkflowAsync(
@@ -81,7 +83,7 @@ public class WorkflowEngine : IWorkflowEngine
             SnapshottedAt = now
         };
 
-        var firstTask = AddApprovalTask(instance, firstNode, now);
+        var firstTask = await AddApprovalTaskAsync(instance, firstNode, now, ct);
         instance.ActionLogs.Add(new WorkflowActionLog
         {
             TraceId = _traceContext.TraceId,
@@ -172,7 +174,7 @@ public class WorkflowEngine : IWorkflowEngine
         }
         else
         {
-            AddApprovalTask(instance, nextNode, now);
+            await AddApprovalTaskAsync(instance, nextNode, now, ct);
             toStatus = "Progressing";
         }
 
@@ -195,15 +197,78 @@ public class WorkflowEngine : IWorkflowEngine
         return task;
     }
 
-    private static WorkflowTask AddApprovalTask(WorkflowInstance instance, WorkflowGraphNode node, DateTime now)
+    public async Task ForwardTaskAsync(
+        string taskId,
+        string operatorCode,
+        string? operatorName,
+        string targetUserCode,
+        string? targetUserName,
+        string? comments,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(operatorCode))
+            throw new UnauthorizedAccessException("操作缺少可信用户身份");
+        if (string.IsNullOrWhiteSpace(targetUserCode))
+            throw new ArgumentException("转交目标用户不能为空");
+
+        var task = _db.Tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new KeyNotFoundException($"未找到审批任务 {taskId}");
+        if (task.Status != TaskStatus.Pending)
+            throw new InvalidOperationException($"任务 {taskId} 已处于 {task.Status} 状态，无法转交");
+
+        var isCandidate = _db.TaskCandidates.Any(c => c.TaskId == taskId && c.UserCode == operatorCode);
+        if (!isCandidate)
+            throw new UnauthorizedAccessException($"用户 {operatorCode} 不是任务 {taskId} 的当前处理人，无权转交");
+
+        var instance = _db.Instances.FirstOrDefault(i => i.Id == task.InstanceId)
+            ?? throw new InvalidOperationException($"未找到任务关联的流程实例 {task.InstanceId}");
+
+        var now = DateTime.UtcNow;
+
+        // 添加目标用户为候选人
+        if (!_db.TaskCandidates.Any(c => c.TaskId == taskId && c.UserCode == targetUserCode))
+        {
+            await _db.AddAsync(new WorkflowTaskCandidate
+            {
+                TaskId = task.Id,
+                UserCode = targetUserCode,
+                UserName = targetUserName ?? targetUserCode,
+                CandidateType = CandidateType.Delegate
+            }, ct);
+        }
+
+        // 记录转交审计日志
+        await _db.AddAsync(new WorkflowActionLog
+        {
+            TraceId = _traceContext.TraceId,
+            InstanceId = instance.Id,
+            TaskId = task.Id,
+            OperatorCode = operatorCode,
+            OperatorName = operatorName,
+            Action = "Forward",
+            FromStatus = "Pending",
+            ToStatus = "Pending",
+            Comment = $"由 {operatorName ?? operatorCode} 转交给 {targetUserName ?? targetUserCode} 处理：{comments}",
+            ClientIp = _traceContext.ClientIp,
+            ActionTime = now
+        }, ct);
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task<WorkflowTask> AddApprovalTaskAsync(WorkflowInstance instance, WorkflowGraphNode node, DateTime now, CancellationToken ct)
     {
         if (node.NodeType != NodeType.Approval)
             throw new InvalidOperationException($"节点 {node.NodeKey} 不是人工审批节点");
-        if (node.CandidateType != CandidateType.Direct)
-            throw new NotSupportedException($"节点 {node.NodeKey} 使用了尚未实现的选人类型 {node.CandidateType}");
-        var candidates = node.CandidateValues.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        var candidates = await _userDirectoryService.ResolveCandidatesAsync(
+            node.CandidateType,
+            node.CandidateValues,
+            instance.SubmitterCode,
+            ct);
+
         if (candidates.Count == 0)
-            throw new InvalidOperationException($"审批节点 {node.NodeKey} 未配置审批人");
+            throw new InvalidOperationException($"审批节点 {node.NodeKey} 无法解析出有效审批人");
 
         var nodeInstance = new WorkflowNodeInstance
         {
@@ -226,7 +291,15 @@ public class WorkflowEngine : IWorkflowEngine
             DueAt = now.AddDays(3)
         };
         foreach (var userCode in candidates)
-            task.Candidates.Add(new WorkflowTaskCandidate { TaskId = task.Id, UserCode = userCode, UserName = userCode, CandidateType = CandidateType.Direct });
+        {
+            task.Candidates.Add(new WorkflowTaskCandidate
+            {
+                TaskId = task.Id,
+                UserCode = userCode,
+                UserName = userCode,
+                CandidateType = node.CandidateType
+            });
+        }
 
         nodeInstance.Tasks.Add(task);
         instance.NodeInstances.Add(nodeInstance);

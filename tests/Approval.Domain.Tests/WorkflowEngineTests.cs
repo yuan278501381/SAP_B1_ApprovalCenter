@@ -25,7 +25,8 @@ public class WorkflowEngineTests
         _db = new ApprovalDbContext(options);
         DbInitializer.SeedAsync(_db).GetAwaiter().GetResult();
         _traceContext = new TraceContext { TraceId = "trace_test_001" };
-        _engine = new WorkflowEngine(_db, _traceContext);
+        var userDirectory = new UserDirectoryService(_db);
+        _engine = new WorkflowEngine(_db, _traceContext, userDirectory);
     }
 
     [Fact]

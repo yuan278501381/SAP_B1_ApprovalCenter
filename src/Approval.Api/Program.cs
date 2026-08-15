@@ -53,6 +53,7 @@ else
 
 builder.Services.AddScoped<IApprovalDbContext>(sp => sp.GetRequiredService<ApprovalDbContext>());
 builder.Services.AddScoped<ITraceContext, TraceContext>();
+builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
 builder.Services.AddScoped<IWorkflowEngine, WorkflowEngine>();
 
 // 3. 注册 SAP 适配器与路由中心。Fake 仅用于开发/测试，生产配置会拒绝启动，避免把模拟回写当成真实成功。

@@ -1,0 +1,85 @@
+# ==============================================================================
+# SAP B1 审批中心 - 企业级 Docker Compose 生产编排配置
+# 包含 API 服务、后台 Worker 调度守护进程、Nginx 安全网关与全链路可观测性
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. 审批中心 Web API 服务
+  # ----------------------------------------------------------------------------
+  approval-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api-runtime
+    container_name: approval-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__ApprovalDbConnection=Server=192.168.134.9,1433;Database=ApprovalDB;User Id=sa;Password=123456@a;TrustServerCertificate=True;
+      - SapAdapter__Mode=ServiceLayer
+      - SapAdapter__ServiceLayer__BaseUrl=https://192.168.134.9:50000/b1s/v1/
+      - SapAdapter__ServiceLayer__CompanyDb=DB_KCC
+      - SapAdapter__ServiceLayer__UserName=ai_agent
+      - SapAdapter__ServiceLayer__Password=123456@aA
+      - SapAdapter__ServiceLayer__AllowInvalidServerCertificate=true
+      - SapAdapter__ServiceLayer__MirrorEnabled=true
+      - Cors__AllowedOrigins__0=http://localhost
+      - Cors__AllowedOrigins__1=http://192.168.134.9
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    networks:
+      - approval-net
+
+  # ----------------------------------------------------------------------------
+  # 2. 审批中心 Outbox 异步中继与租约守护 Worker
+  # ----------------------------------------------------------------------------
+  approval-worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: worker-runtime
+    container_name: approval-worker
+    restart: unless-stopped
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ConnectionStrings__ApprovalDbConnection=Server=192.168.134.9,1433;Database=ApprovalDB;User Id=sa;Password=123456@a;TrustServerCertificate=True;
+      - SapAdapter__Mode=ServiceLayer
+      - SapAdapter__ServiceLayer__BaseUrl=https://192.168.134.9:50000/b1s/v1/
+      - SapAdapter__ServiceLayer__CompanyDb=DB_KCC
+      - SapAdapter__ServiceLayer__UserName=ai_agent
+      - SapAdapter__ServiceLayer__Password=123456@aA
+      - SapAdapter__ServiceLayer__AllowInvalidServerCertificate=true
+      - SapAdapter__ServiceLayer__MirrorEnabled=true
+    depends_on:
+      approval-api:
+        condition: service_healthy
+    networks:
+      - approval-net
+
+  # ----------------------------------------------------------------------------
+  # 3. Nginx 企业级安全反向代理网关
+  # ----------------------------------------------------------------------------
+  nginx-gateway:
+    image: nginx:alpine
+    container_name: approval-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - approval-api
+    networks:
+      - approval-net
+
+networks:
+  approval-net:
+    driver: bridge

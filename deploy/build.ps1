@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     SAP B1 10.0 通用可靠审批平台一键跨架构构建与发布脚本
 .DESCRIPTION
@@ -9,7 +9,7 @@
     编译配置: Release 或 Debug (默认 Release)
 #>
 param(
-    [ValidateSet("win-x64", "win-arm64")]
+    [ValidateSet("win-x64", "win-arm64", "linux-x64")]
     [string]$Architecture = "win-x64",
 
     [ValidateSet("Release", "Debug")]

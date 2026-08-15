@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     SAP B1 10.0 通用审批平台全自动部署与运维脚本 (Windows / Windows Server 2022/2025)
 .DESCRIPTION

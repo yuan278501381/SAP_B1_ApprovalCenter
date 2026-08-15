@@ -78,18 +78,34 @@ else
 }
 builder.Services.AddScoped<ISapAdapterRegistry, SapAdapterRegistry>();
 
-// 4. CORS 白名单。可信身份头模式绝不能同时开放 AllowAnyOrigin。
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
-if (builder.Environment.IsDevelopment() && allowedOrigins.Length == 0)
-    allowedOrigins = new[] { "http://localhost:5173" };
+// 4. CORS 策略 (开发模式自适应任意动态前端端口与局域网，生产模式强制白名单)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ApprovalWeb", policy =>
     {
-        if (allowedOrigins.Length > 0)
-            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin)) return false;
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+                return uri.Host is "localhost" or "127.0.0.1" || uri.Host.StartsWith("192.168.") || uri.Host.StartsWith("10.");
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+        }
+        else
+        {
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+            if (allowedOrigins.Length > 0)
+                policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+        }
     });
 });
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApprovalDbContext>("ApprovalDB");
 
 var app = builder.Build();
 
@@ -131,6 +147,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseCors("ApprovalWeb");
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 

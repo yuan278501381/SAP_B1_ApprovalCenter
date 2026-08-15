@@ -1,15 +1,23 @@
-name: Approval Platform CI/CD Pipeline
+name: SAP B1 Approval Center World-Class CI/CD Pipeline
 
 on:
   push:
     branches: [ main, master, release/* ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
-    name: Build, Test & Package (x64 / ARM64)
-    runs-on: windows-latest
+  # ----------------------------------------------------------------------------
+  # 1. 质量门禁与全量自动化测试矩阵
+  # ----------------------------------------------------------------------------
+  quality-gate-and-test:
+    name: Test & Quality Gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, ubuntu-latest ]
 
     steps:
       - name: Checkout Code
@@ -31,22 +39,73 @@ jobs:
       - name: Run Domain & Integration Tests
         run: dotnet test SAP_B1_ApprovalCenter.sln --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
 
-      - name: Build Frontend Vue 3 App
+      - name: Build & Type-Check Frontend Vue 3 App
         working-directory: src/Approval.Web
         run: |
           npm ci
           npm run build
 
-      - name: Publish Windows x64 Distribution
-        run: |
-          pwsh deploy/build.ps1 -Architecture win-x64 -Configuration Release
+  # ----------------------------------------------------------------------------
+  # 2. 跨架构分发打包 (Windows x64 / ARM64 / Linux x64)
+  # ----------------------------------------------------------------------------
+  build-and-package:
+    name: Package Distributions (x64 / ARM64)
+    needs: quality-gate-and-test
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [ win-x64, win-arm64, linux-x64 ]
 
-      - name: Publish Windows ARM64 Distribution
-        run: |
-          pwsh deploy/build.ps1 -Architecture win-arm64 -Configuration Release
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Upload Artifacts
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
+      - name: Build Frontend & Publish Backend
+        run: |
+          pwsh deploy/build.ps1 -Architecture ${{ matrix.arch }} -Configuration Release
+
+      - name: Compress Release Archive
+        run: |
+          Compress-Archive -Path dist/${{ matrix.arch }}/* -DestinationPath dist/SAP_B1_ApprovalCenter_${{ matrix.arch }}.zip
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: approval-platform-packages
-          path: dist/
+          name: distribution-${{ matrix.arch }}
+          path: dist/SAP_B1_ApprovalCenter_${{ matrix.arch }}.zip
+
+  # ----------------------------------------------------------------------------
+  # 3. Docker 容器镜像多架构构建与验证
+  # ----------------------------------------------------------------------------
+  docker-build:
+    name: Docker Multi-Stage Build Verification
+    needs: quality-gate-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Validate Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deploy/Dockerfile
+          push: false
+          tags: sap-b1-approval-api:latest
+          platforms: linux/amd64,linux/arm64

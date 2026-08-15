@@ -1,0 +1,229 @@
+/*
+================================================================================
+    项目名称: SAP B1 10.0 通用可靠审批平台 (Approval Platform)
+    脚本功能: ApprovalDB 数据库初始化与核心表结构 DDL
+    环境基准: Microsoft SQL Server 2022 / T-SQL
+    编码规范: GBK 编码
+    创建日期: 2026-08-15
+================================================================================
+*/
+
+SET NOCOUNT ON;
+
+-- 1. 流程定义主表
+IF OBJECT_ID(N'dbo.wf_definition', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_definition (
+        id VARCHAR(64) NOT NULL,
+        name NVARCHAR(128) NOT NULL,
+        category NVARCHAR(64) NOT NULL CONSTRAINT DF_wf_definition_category DEFAULT (N'General'),
+        description NVARCHAR(500) NULL,
+        is_active BIT NOT NULL CONSTRAINT DF_wf_definition_is_active DEFAULT (1),
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_definition_created_at DEFAULT (SYSDATETIME()),
+        updated_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_definition_updated_at DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_definition PRIMARY KEY CLUSTERED (id)
+    );
+END;
+
+-- 2. 流程定义版本表 (发布后物理不可变)
+IF OBJECT_ID(N'dbo.wf_definition_version', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_definition_version (
+        id VARCHAR(64) NOT NULL,
+        definition_id VARCHAR(64) NOT NULL,
+        version_num INT NOT NULL,
+        graph_json NVARCHAR(MAX) NOT NULL,
+        status VARCHAR(32) NOT NULL CONSTRAINT DF_wf_def_ver_status DEFAULT ('Draft'), -- Draft, Published, Deprecated
+        published_at DATETIME2(3) NULL,
+        created_by NVARCHAR(64) NOT NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_def_ver_created_at DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_definition_version PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_def_ver_definition FOREIGN KEY (definition_id) REFERENCES dbo.wf_definition(id),
+        CONSTRAINT UQ_wf_def_version_num UNIQUE NONCLUSTERED (definition_id, version_num)
+    );
+END;
+
+-- 3. 业务对象与流程绑定表
+IF OBJECT_ID(N'dbo.wf_binding', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_binding (
+        id VARCHAR(64) NOT NULL,
+        company_id NVARCHAR(64) NOT NULL,
+        object_code NVARCHAR(64) NOT NULL,
+        version_id VARCHAR(64) NOT NULL,
+        priority INT NOT NULL CONSTRAINT DF_wf_binding_priority DEFAULT (0),
+        condition_expr NVARCHAR(500) NULL,
+        is_active BIT NOT NULL CONSTRAINT DF_wf_binding_is_active DEFAULT (1),
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_binding_created_at DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_binding PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_binding_version FOREIGN KEY (version_id) REFERENCES dbo.wf_definition_version(id)
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_binding_lookup ON dbo.wf_binding(company_id, object_code, is_active, priority DESC);
+END;
+
+-- 4. 流程审批实例表
+IF OBJECT_ID(N'dbo.wf_instance', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_instance (
+        id VARCHAR(64) NOT NULL,
+        company_id NVARCHAR(64) NOT NULL,
+        object_code NVARCHAR(64) NOT NULL,
+        object_key NVARCHAR(128) NOT NULL,
+        title NVARCHAR(256) NOT NULL,
+        submitter_code NVARCHAR(64) NOT NULL,
+        submitter_name NVARCHAR(128) NULL,
+        status VARCHAR(32) NOT NULL CONSTRAINT DF_wf_instance_status DEFAULT ('Running'), -- Running, Approved, Rejected, Cancelled
+        current_version_id VARCHAR(64) NOT NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_instance_created_at DEFAULT (SYSDATETIME()),
+        finished_at DATETIME2(3) NULL,
+        row_version ROWVERSION NOT NULL,
+        CONSTRAINT PK_wf_instance PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_instance_version FOREIGN KEY (current_version_id) REFERENCES dbo.wf_definition_version(id)
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_instance_object ON dbo.wf_instance(company_id, object_code, object_key, status);
+END;
+
+-- 5. 单据不可变规范化快照与 SHA-256 哈希表 (防数据篡改)
+IF OBJECT_ID(N'dbo.wf_snapshot', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_snapshot (
+        instance_id VARCHAR(64) NOT NULL,
+        raw_json NVARCHAR(MAX) NOT NULL,
+        canonical_json NVARCHAR(MAX) NOT NULL,
+        data_sha256 VARCHAR(64) NOT NULL,
+        snapshotted_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_snapshot_time DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_snapshot PRIMARY KEY CLUSTERED (instance_id),
+        CONSTRAINT FK_wf_snapshot_instance FOREIGN KEY (instance_id) REFERENCES dbo.wf_instance(id) ON DELETE CASCADE
+    );
+END;
+
+-- 6. 节点实例表
+IF OBJECT_ID(N'dbo.wf_node_instance', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_node_instance (
+        id VARCHAR(64) NOT NULL,
+        instance_id VARCHAR(64) NOT NULL,
+        node_key VARCHAR(64) NOT NULL,
+        node_name NVARCHAR(128) NOT NULL,
+        node_type VARCHAR(32) NOT NULL, -- Start, Approval, Condition, ParallelSplit, ParallelJoin, CC, End
+        status VARCHAR(32) NOT NULL CONSTRAINT DF_wf_node_status DEFAULT ('Pending'), -- Pending, Active, Completed, Skipped
+        started_at DATETIME2(3) NULL,
+        completed_at DATETIME2(3) NULL,
+        CONSTRAINT PK_wf_node_instance PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_node_instance FOREIGN KEY (instance_id) REFERENCES dbo.wf_instance(id) ON DELETE CASCADE
+    );
+END;
+
+-- 7. 审批任务表
+IF OBJECT_ID(N'dbo.wf_task', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_task (
+        id VARCHAR(64) NOT NULL,
+        instance_id VARCHAR(64) NOT NULL,
+        node_instance_id VARCHAR(64) NOT NULL,
+        task_type VARCHAR(32) NOT NULL CONSTRAINT DF_wf_task_type DEFAULT ('Approve'), -- Approve, Sign, CC
+        status VARCHAR(32) NOT NULL CONSTRAINT DF_wf_task_status DEFAULT ('Pending'), -- Pending, Completed, Cancelled, Delegated
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_task_created_at DEFAULT (SYSDATETIME()),
+        due_at DATETIME2(3) NULL,
+        completed_at DATETIME2(3) NULL,
+        completed_by NVARCHAR(64) NULL,
+        decision VARCHAR(32) NULL, -- Approve, Reject, Return
+        comments NVARCHAR(1000) NULL,
+        row_version ROWVERSION NOT NULL,
+        CONSTRAINT PK_wf_task PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_task_instance FOREIGN KEY (instance_id) REFERENCES dbo.wf_instance(id),
+        CONSTRAINT FK_wf_task_node FOREIGN KEY (node_instance_id) REFERENCES dbo.wf_node_instance(id)
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_task_status ON dbo.wf_task(status, due_at);
+END;
+
+-- 8. 任务候选处理人表 (支持按人员/角色/主管多候选)
+IF OBJECT_ID(N'dbo.wf_task_candidate', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_task_candidate (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        task_id VARCHAR(64) NOT NULL,
+        user_code NVARCHAR(64) NOT NULL,
+        user_name NVARCHAR(128) NULL,
+        candidate_type VARCHAR(32) NOT NULL CONSTRAINT DF_wf_candidate_type DEFAULT ('Direct'), -- Direct, Role, Manager, Delegate
+        CONSTRAINT PK_wf_task_candidate PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_task_candidate_task FOREIGN KEY (task_id) REFERENCES dbo.wf_task(id) ON DELETE CASCADE
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_candidate_user ON dbo.wf_task_candidate(user_code, task_id);
+END;
+
+-- 9. 不可变操作审计日志表
+IF OBJECT_ID(N'dbo.wf_action_log', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_action_log (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        trace_id VARCHAR(64) NOT NULL,
+        instance_id VARCHAR(64) NOT NULL,
+        task_id VARCHAR(64) NULL,
+        operator_code NVARCHAR(64) NOT NULL,
+        operator_name NVARCHAR(128) NULL,
+        action VARCHAR(64) NOT NULL, -- Submit, Approve, Reject, Return, Delegate, Withdraw
+        from_status VARCHAR(32) NOT NULL,
+        to_status VARCHAR(32) NOT NULL,
+        comment NVARCHAR(1000) NULL,
+        client_ip VARCHAR(64) NULL,
+        action_time DATETIME2(3) NOT NULL CONSTRAINT DF_wf_action_log_time DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_action_log PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT FK_wf_action_log_instance FOREIGN KEY (instance_id) REFERENCES dbo.wf_instance(id)
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_action_log_inst ON dbo.wf_action_log(instance_id, action_time);
+END;
+
+-- 10. Outbox 发件箱事件表 (可靠消息投递与重试)
+IF OBJECT_ID(N'dbo.wf_outbox', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_outbox (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        trace_id VARCHAR(64) NOT NULL,
+        event_type VARCHAR(64) NOT NULL, -- InstanceApproved, TaskCreated, SyncToSap
+        aggregate_id VARCHAR(64) NOT NULL,
+        payload_json NVARCHAR(MAX) NOT NULL,
+        status VARCHAR(32) NOT NULL CONSTRAINT DF_wf_outbox_status DEFAULT ('Pending'), -- Pending, Processing, Sent, Failed
+        retry_count INT NOT NULL CONSTRAINT DF_wf_outbox_retry DEFAULT (0),
+        max_retries INT NOT NULL CONSTRAINT DF_wf_outbox_max_retries DEFAULT (10),
+        next_retry_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_outbox_next_retry DEFAULT (SYSDATETIME()),
+        error_msg NVARCHAR(MAX) NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_outbox_created_at DEFAULT (SYSDATETIME()),
+        sent_at DATETIME2(3) NULL,
+        CONSTRAINT PK_wf_outbox PRIMARY KEY CLUSTERED (id)
+    );
+    CREATE NONCLUSTERED INDEX IX_wf_outbox_poll ON dbo.wf_outbox(status, next_retry_at) WHERE status IN ('Pending', 'Processing');
+END;
+
+-- 11. Inbox 收件箱幂等表
+IF OBJECT_ID(N'dbo.wf_inbox', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.wf_inbox (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        idempotency_key VARCHAR(128) NOT NULL,
+        handler_name VARCHAR(128) NOT NULL,
+        response_json NVARCHAR(MAX) NULL,
+        processed_at DATETIME2(3) NOT NULL CONSTRAINT DF_wf_inbox_time DEFAULT (SYSDATETIME()),
+        CONSTRAINT PK_wf_inbox PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT UQ_wf_inbox_key UNIQUE NONCLUSTERED (idempotency_key)
+    );
+END;
+
+-- 12. SAP 镜像同步状态跟踪表
+IF OBJECT_ID(N'dbo.sap_sync_state', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.sap_sync_state (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        company_id NVARCHAR(64) NOT NULL,
+        object_code NVARCHAR(64) NOT NULL,
+        object_key NVARCHAR(128) NOT NULL,
+        instance_id VARCHAR(64) NOT NULL,
+        expected_status VARCHAR(32) NOT NULL,
+        last_synced_status VARCHAR(32) NULL,
+        sync_status VARCHAR(32) NOT NULL CONSTRAINT DF_sap_sync_status DEFAULT ('Pending'), -- Pending, Synced, Failed
+        last_sync_attempt DATETIME2(3) NULL,
+        error_message NVARCHAR(MAX) NULL,
+        CONSTRAINT PK_sap_sync_state PRIMARY KEY CLUSTERED (id),
+        CONSTRAINT UQ_sap_sync_obj UNIQUE NONCLUSTERED (company_id, object_code, object_key)
+    );
+END;

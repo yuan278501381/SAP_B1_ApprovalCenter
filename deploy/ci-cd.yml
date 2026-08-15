@@ -1,0 +1,52 @@
+name: Approval Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, release/* ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build, Test & Package (x64 / ARM64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
+      - name: Restore Backend Dependencies
+        run: dotnet restore SAP_B1_ApprovalCenter.sln
+
+      - name: Run Domain & Integration Tests
+        run: dotnet test SAP_B1_ApprovalCenter.sln --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Build Frontend Vue 3 App
+        working-directory: src/Approval.Web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish Windows x64 Distribution
+        run: |
+          pwsh deploy/build.ps1 -Architecture win-x64 -Configuration Release
+
+      - name: Publish Windows ARM64 Distribution
+        run: |
+          pwsh deploy/build.ps1 -Architecture win-arm64 -Configuration Release
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: approval-platform-packages
+          path: dist/

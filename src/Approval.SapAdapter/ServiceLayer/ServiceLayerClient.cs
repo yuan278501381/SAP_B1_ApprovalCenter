@@ -12,13 +12,14 @@ public sealed class ServiceLayerClient : IDisposable
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _loginLock = new(1, 1);
     private volatile bool _loggedIn;
+    private string? _sessionId;
+    private string? _routeId = ".node1";
 
     public ServiceLayerClient(ServiceLayerOptions options)
     {
         _options = options;
         ValidateOptions(options);
-        var cookies = new CookieContainer();
-        var handler = new HttpClientHandler { CookieContainer = cookies, UseCookies = true };
+        var handler = new HttpClientHandler();
         if (options.AllowInvalidServerCertificate)
             handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         _http = new HttpClient(handler)
@@ -67,29 +68,59 @@ public sealed class ServiceLayerClient : IDisposable
     private async Task<HttpResponseMessage> SendWithReloginAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
     {
         await EnsureLoginAsync(ct);
-        var response = await _http.SendAsync(requestFactory(), ct);
+        var req = requestFactory();
+        if (!string.IsNullOrEmpty(_sessionId))
+        {
+            req.Headers.Add("Cookie", $"B1SESSION={_sessionId}; ROUTEID={_routeId ?? ".node1"}");
+        }
+        var response = await _http.SendAsync(req, ct);
         if (response.StatusCode != HttpStatusCode.Unauthorized) return response;
         response.Dispose();
         _loggedIn = false;
+        _sessionId = null;
         await EnsureLoginAsync(ct);
-        return await _http.SendAsync(requestFactory(), ct);
+        var retryReq = requestFactory();
+        if (!string.IsNullOrEmpty(_sessionId))
+        {
+            retryReq.Headers.Add("Cookie", $"B1SESSION={_sessionId}; ROUTEID={_routeId ?? ".node1"}");
+        }
+        return await _http.SendAsync(retryReq, ct);
     }
 
     private async Task EnsureLoginAsync(CancellationToken ct)
     {
-        if (_loggedIn) return;
+        if (_loggedIn && !string.IsNullOrEmpty(_sessionId)) return;
         await _loginLock.WaitAsync(ct);
         try
         {
-            if (_loggedIn) return;
-            using var response = await _http.PostAsJsonAsync("Login", new
+            if (_loggedIn && !string.IsNullOrEmpty(_sessionId)) return;
+            var loginPayload = JsonSerializer.Serialize(new Dictionary<string, string>
             {
-                CompanyDB = _options.CompanyDb,
-                UserName = _options.UserName,
-                Password = _options.Password
-            }, ct);
+                ["CompanyDB"] = _options.CompanyDb,
+                ["UserName"] = _options.UserName,
+                ["Password"] = _options.Password
+            });
+            using var request = new HttpRequestMessage(HttpMethod.Post, "Login")
+            {
+                Content = new StringContent(loginPayload, Encoding.UTF8, "application/json")
+            };
+            using var response = await _http.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
             EnsureSuccess(response, body);
+            
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("SessionId", out var sidProp))
+                {
+                    _sessionId = sidProp.GetString();
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
             _loggedIn = true;
         }
         finally

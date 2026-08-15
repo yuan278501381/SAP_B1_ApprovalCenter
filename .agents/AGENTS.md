@@ -47,3 +47,16 @@
 * **SA 密码**: 123456@a
 * **SSH 免密直连**: `ssh -o StrictHostKeyChecking=no administrator@192.168.134.9 "<command>"`
 </RULE[local_vm_environment]>
+
+<RULE[devops_and_process_safety]>
+## 5. 远程部署与执行防挂起红线 (Remote Execution & Process Safety)
+* **杜绝 SSH 会话管道阻塞挂起**: 严禁通过交互式 SSH 执行启动 Windows 服务或可能阻塞 stdin/stdout 的脚本。数据库升级统一通过本地 TCP 直连执行，命令调用必须同步等待并保证句柄即时关闭。
+* **文件同步性能标准**: 跨网络同步部署包时，严禁使用单线程慢速 `Copy-Item`，强制使用 Windows 原生多线程镜像增量工具 `robocopy /MIR`（秒级完成）。
+* **进程主动收敛与 0 孤儿任务**: 每一轮工具调用与部署必须显式收敛，严禁在后台残留长期无响应的运行中任务。
+</RULE[devops_and_process_safety]>
+
+<RULE[enterprise_terminology_and_ux]>
+## 6. 私有化企业级文案与极致 UX 规范 (Terminology & Fast-Path UX)
+* **私有化服务器文案红线**: 本系统为企业局域网/私有化本地部署架构，全局前端与后端提示语严禁出现“云端/云端漫游”等公有云歧义词汇，必须严格规范为**“已保存到服务器”** / **“已同步至服务器”**。
+* **0 延迟键盘盲操瞬切**: 待办工作台与单据详情必须保持内存高速缓存与零 DOM 颠簸（Zero Layout Thrashing），保障键盘 `J`/`K` 穿梭切换达到 0ms 电竞级丝滑响应。
+</RULE[enterprise_terminology_and_ux]>

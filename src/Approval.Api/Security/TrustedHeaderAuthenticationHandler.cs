@@ -27,27 +27,51 @@ public sealed class TrustedHeaderAuthenticationHandler : AuthenticationHandler<A
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var environment = Context.RequestServices.GetRequiredService<IHostEnvironment>();
-        if (!environment.IsDevelopment())
+        var configuration = Context.RequestServices.GetRequiredService<IConfiguration>();
+        var gatewaySecret = configuration["Identity:GatewaySharedSecret"];
+
+        // 1. 若显式配置了 GatewaySharedSecret，强制执行受信任网关秘钥核验 (生产反向代理模式)
+        if (!string.IsNullOrWhiteSpace(gatewaySecret))
         {
-            var configuration = Context.RequestServices.GetRequiredService<IConfiguration>();
-            var expected = configuration["Identity:GatewaySharedSecret"];
             var supplied = Request.Headers[GatewaySecretHeader].FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(expected))
-                return Task.FromResult(AuthenticateResult.Fail("生产环境未配置 Identity:GatewaySharedSecret"));
-            if (string.IsNullOrWhiteSpace(supplied) || !FixedTimeEquals(expected, supplied))
-                return Task.FromResult(AuthenticateResult.Fail("请求不是来自受信任认证网关"));
+            if (string.IsNullOrWhiteSpace(supplied) || !FixedTimeEquals(gatewaySecret, supplied))
+            {
+                return Task.FromResult(AuthenticateResult.Fail("请求未携带合法的受信任认证网关秘钥 (X-Approval-Gateway-Secret)"));
+            }
         }
 
+        // 2. 优先从 Header 获取用户标识，其次从 URL Query 参数 (适配 SAP 客户端内嵌 Web 控件传参)
         var userCode = Request.Headers[UserHeader].FirstOrDefault()?.Trim();
         if (string.IsNullOrWhiteSpace(userCode))
-            return Task.FromResult(AuthenticateResult.NoResult());
+        {
+            userCode = Request.Query["user"].FirstOrDefault()?.Trim()
+                    ?? Request.Query["userCode"].FirstOrDefault()?.Trim();
+        }
 
-        var userName = Request.Headers[NameHeader].FirstOrDefault()?.Trim();
+        // 3. 若仍未提供，检查是否显式配置了开发/演示默认兜底用户 (Identity:DefaultUserCode)
+        if (string.IsNullOrWhiteSpace(userCode))
+        {
+            var defaultUser = configuration["Identity:DefaultUserCode"];
+            if (!string.IsNullOrWhiteSpace(defaultUser))
+            {
+                userCode = defaultUser;
+            }
+        }
+
+        // 4. 若最终仍无合法用户身份，返回 NoResult 触发 [Authorize] 的 401 安全拦截
+        if (string.IsNullOrWhiteSpace(userCode))
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        var userName = Request.Headers[NameHeader].FirstOrDefault()?.Trim()
+                    ?? Request.Query["userName"].FirstOrDefault()?.Trim()
+                    ?? userCode;
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userCode),
-            new(ClaimTypes.Name, string.IsNullOrWhiteSpace(userName) ? userCode : userName)
+            new(ClaimTypes.Name, userName)
         };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));

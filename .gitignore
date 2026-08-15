@@ -24,6 +24,8 @@ appsettings.Production.json
 .env.local
 .env.*.local
 
-## 系统临时文件
+## 系统临时文件与本地第三方工具
 .DS_Store
 Thumbs.db
+tools/
+*.war

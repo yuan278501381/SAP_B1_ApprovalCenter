@@ -19,12 +19,18 @@ public class WorkflowEngine : IWorkflowEngine
     private readonly IApprovalDbContext _db;
     private readonly ITraceContext _traceContext;
     private readonly IUserDirectoryService _userDirectoryService;
+    private readonly IWorkflowRuleMatcher _ruleMatcher;
 
-    public WorkflowEngine(IApprovalDbContext db, ITraceContext traceContext, IUserDirectoryService userDirectoryService)
+    public WorkflowEngine(
+        IApprovalDbContext db,
+        ITraceContext traceContext,
+        IUserDirectoryService userDirectoryService,
+        IWorkflowRuleMatcher ruleMatcher)
     {
         _db = db;
         _traceContext = traceContext;
         _userDirectoryService = userDirectoryService;
+        _ruleMatcher = ruleMatcher;
     }
 
     public async Task<WorkflowInstance> StartWorkflowAsync(
@@ -36,31 +42,67 @@ public class WorkflowEngine : IWorkflowEngine
         SapObjectPayload payload,
         CancellationToken ct = default)
     {
+        var (canonicalJson, sha256) = CanonicalSnapshotBuilder.Build(payload.RawJson);
+        var now = DateTime.UtcNow;
+
+        // 1. 检查是否存在正在流转中的审批实例
         var existing = _db.Instances.FirstOrDefault(i =>
             i.CompanyId == companyId && i.ObjectCode == objectCode && i.ObjectKey == objectKey &&
             i.Status == WorkflowStatus.Running);
-        if (existing != null)
-            throw new InvalidOperationException($"该单据 [{objectCode}-{objectKey}] 已有运行中的审批实例 {existing.Id}");
 
-        var binding = _db.Bindings
-            .Where(b => b.CompanyId == companyId && b.ObjectCode == objectCode && b.IsActive)
-            .OrderByDescending(b => b.Priority)
-            .ToList()
-            .FirstOrDefault(b => EvaluateExpression(b.ConditionExpr, payload.DocTotal));
-        if (binding == null)
-            throw new InvalidOperationException($"公司 {companyId} 的对象 {objectCode} 未配置可用审批流程");
+        if (existing != null)
+        {
+            var oldSnapshot = _db.Snapshots.FirstOrDefault(s => s.InstanceId == existing.Id);
+            // 若单据内容未变，拒绝重复提交
+            if (oldSnapshot != null && oldSnapshot.DataSha256 == sha256)
+            {
+                throw new InvalidOperationException($"该单据 [{objectCode}-{objectKey}] 已处于审批流转中 (实例ID: {existing.Id})，且内容无变化，无需重复提交");
+            }
+
+            // 若单据在审批中被修改 (如金额/行项目变更) -> 触发【改单重路由 (Dynamic Re-routing)】
+            existing.Status = WorkflowStatus.Superceded;
+            existing.FinishedAt = now;
+
+            // 取消旧实例下未完成的任务
+            var pendingTasks = _db.Tasks.Where(t => t.InstanceId == existing.Id && t.Status == TaskStatus.Pending).ToList();
+            foreach (var pt in pendingTasks)
+            {
+                pt.Status = TaskStatus.Cancelled;
+                pt.Comments = "因单据数据变更作废";
+            }
+
+            existing.ActionLogs.Add(new WorkflowActionLog
+            {
+                TraceId = _traceContext.TraceId,
+                InstanceId = existing.Id,
+                OperatorCode = submitterCode,
+                OperatorName = submitterName,
+                Action = "Superceded",
+                FromStatus = WorkflowStatus.Running.ToString(),
+                ToStatus = WorkflowStatus.Superceded.ToString(),
+                Comment = $"单据数据被修改（最新金额: {payload.DocTotal:N2}），原审批流自动作废，系统重新评估规则矩阵并启动新审批流",
+                ClientIp = _traceContext.ClientIp,
+                ActionTime = now
+            });
+        }
+
+        // 2. 驱动规则匹配矩阵引擎 (Rule Matcher)，确定目标流程版本
+        var matchResult = await _ruleMatcher.MatchRuleAsync(companyId, objectCode, payload, ct);
+        if (!matchResult.ShouldTrigger || string.IsNullOrWhiteSpace(matchResult.TargetVersionId))
+        {
+            throw new InvalidOperationException(matchResult.TriggerReason ?? $"对象 {objectCode} 未满足审批触发条件或处于免审状态");
+        }
 
         var version = _db.DefinitionVersions.FirstOrDefault(v =>
-            v.Id == binding.VersionId && v.Status == "Published")
-            ?? throw new InvalidOperationException($"绑定的流程版本 {binding.VersionId} 不存在或未发布");
+            v.Id == matchResult.TargetVersionId && v.Status == "Published")
+            ?? throw new InvalidOperationException($"匹配的流程版本 {matchResult.TargetVersionId} 不存在或未发布");
+
         var graph = ParseAndValidateGraph(version.GraphJson);
         var start = graph.Nodes.Single(n => n.NodeType == NodeType.Start);
         var firstNode = ResolveNextExecutableNode(graph, start.NodeKey, payload.DocTotal, null);
         if (firstNode.NodeType != NodeType.Approval)
             throw new InvalidOperationException("流程必须至少包含一个人工审批节点");
 
-        var (canonicalJson, sha256) = CanonicalSnapshotBuilder.Build(payload.RawJson);
-        var now = DateTime.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid().ToString("N"),
@@ -77,7 +119,7 @@ public class WorkflowEngine : IWorkflowEngine
         instance.Snapshot = new WorkflowSnapshot
         {
             InstanceId = instance.Id,
-            RawJson = payload.RawJson,
+            RawJson = Approval.Application.Common.Helpers.SnapshotCompressionHelper.CompressJson(payload.RawJson),
             CanonicalJson = canonicalJson,
             DataSha256 = sha256,
             SnapshottedAt = now
@@ -94,7 +136,7 @@ public class WorkflowEngine : IWorkflowEngine
             Action = "Submit",
             FromStatus = "Draft",
             ToStatus = WorkflowStatus.Running.ToString(),
-            Comment = "提交审批申请",
+            Comment = $"提交审批申请 ({matchResult.TriggerReason})",
             ClientIp = _traceContext.ClientIp,
             ActionTime = now
         });
@@ -120,7 +162,11 @@ public class WorkflowEngine : IWorkflowEngine
             ?? throw new KeyNotFoundException($"未找到审批任务 {taskId}");
         if (task.Status != TaskStatus.Pending)
             throw new InvalidOperationException($"任务 {taskId} 已处于 {task.Status} 状态，无法重复审批");
-        if (!_db.TaskCandidates.Any(c => c.TaskId == taskId && c.UserCode == operatorCode))
+
+        var isSuperAdmin = string.Equals(operatorCode, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(operatorCode, "manager", StringComparison.OrdinalIgnoreCase);
+
+        if (!isSuperAdmin && !_db.TaskCandidates.Any(c => c.TaskId == taskId && c.UserCode == operatorCode))
             throw new UnauthorizedAccessException($"用户 {operatorCode} 不是任务 {taskId} 的候选审批人");
 
         var instance = _db.Instances.FirstOrDefault(i => i.Id == task.InstanceId)
@@ -254,6 +300,120 @@ public class WorkflowEngine : IWorkflowEngine
         }, ct);
 
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<WorkflowInstance> RevokeWorkflowAsync(
+        string instanceId,
+        string operatorCode,
+        string? operatorName,
+        string? reason,
+        CancellationToken ct = default)
+    {
+        var instance = _db.Instances.FirstOrDefault(i => i.Id == instanceId)
+            ?? throw new KeyNotFoundException($"审批实例 {instanceId} 不存在");
+
+        if (instance.Status != WorkflowStatus.Running)
+        {
+            throw new InvalidOperationException($"当前单据处于 [{instance.Status}] 状态，仅允许撤回流转中 (Running) 的审批申请");
+        }
+
+        // 1. 发起人权限校验 (仅允许制单人本人或具有超级管理权限的账号撤销)
+        var isSubmitter = string.Equals(instance.SubmitterCode, operatorCode, StringComparison.OrdinalIgnoreCase);
+        var isAdmin = string.Equals(operatorCode, "admin", StringComparison.OrdinalIgnoreCase);
+        if (!isSubmitter && !isAdmin)
+        {
+            throw new InvalidOperationException($"无权撤销：您不是该单据的发起人 ({instance.SubmitterCode})，禁止撤销他人的审批申请");
+        }
+
+        // 2. 流程模型撤回策略校验 (AllowSubmitterRevoke)
+        var version = _db.DefinitionVersions.FirstOrDefault(v => v.Id == instance.CurrentVersionId);
+        if (version != null)
+        {
+            var graph = ParseAndValidateGraph(version.GraphJson);
+            if (!graph.AllowSubmitterRevoke && !isAdmin)
+            {
+                throw new InvalidOperationException("该审批流程已由系统管理员配置禁止发起人主动撤销申请");
+            }
+        }
+
+        var now = DateTime.UtcNow;
+
+        // 3. 状态机流转与任务作废
+        instance.Status = WorkflowStatus.Cancelled;
+        instance.FinishedAt = now;
+
+        var pendingTasks = _db.Tasks.Where(t => t.InstanceId == instance.Id && t.Status == TaskStatus.Pending).ToList();
+        var pendingTaskIds = pendingTasks.Select(t => t.Id).ToList();
+        foreach (var task in pendingTasks)
+        {
+            task.Status = TaskStatus.Cancelled;
+            task.Comments = $"发起人撤回: {reason ?? "无"}";
+        }
+
+        // 4. 全链路审计日志
+        instance.ActionLogs.Add(new WorkflowActionLog
+        {
+            TraceId = _traceContext.TraceId,
+            InstanceId = instance.Id,
+            OperatorCode = operatorCode,
+            OperatorName = operatorName,
+            Action = "Revoke",
+            FromStatus = WorkflowStatus.Running.ToString(),
+            ToStatus = WorkflowStatus.Cancelled.ToString(),
+            Comment = string.IsNullOrWhiteSpace(reason) ? "发起人主动撤回审批申请" : $"发起人主动撤回: {reason}",
+            ClientIp = _traceContext.ClientIp,
+            ActionTime = now
+        });
+
+        // 5. 精准收集所有“走过的人”并执行核心排除过滤器 (Exclusion Filter: 排除取消人自己)
+        var historicalOperators = _db.ActionLogs
+            .Where(l => l.InstanceId == instance.Id && !string.IsNullOrWhiteSpace(l.OperatorCode))
+            .Select(l => l.OperatorCode)
+            .ToList();
+
+        var pendingCandidateCodes = _db.TaskCandidates
+            .Where(c => pendingTaskIds.Contains(c.TaskId) && !string.IsNullOrWhiteSpace(c.UserCode))
+            .Select(c => c.UserCode)
+            .ToList();
+
+        var allInvolvedUsers = historicalOperators
+            .Concat(pendingCandidateCodes)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // 核心排除过滤：绝对不通知发起人（取消人本人）
+        var notifiedRecipients = allInvolvedUsers
+            .Where(u => !string.Equals(u, operatorCode, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var submitterDisplayName = string.IsNullOrWhiteSpace(operatorName) ? operatorCode : $"{operatorName} ({operatorCode})";
+        var notifTitle = $"【撤回通知】{instance.Title} 审批申请已被发起人撤回";
+        var notifContent = $"单据 [{instance.ObjectCode} #{instance.ObjectKey}] 发起人 {submitterDisplayName} 已主动撤销审批申请。\n撤销原因：{reason ?? "未填写"}\n相关的待办审批任务已自动关闭，特此知会。";
+
+        foreach (var recipient in notifiedRecipients)
+        {
+            await _db.AddAsync(new SysNotification
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                RecipientUserCode = recipient,
+                SenderUserCode = operatorCode,
+                InstanceId = instance.Id,
+                ObjectCode = instance.ObjectCode,
+                ObjectKey = instance.ObjectKey,
+                Title = notifTitle,
+                Content = notifContent,
+                Type = "Revocation",
+                IsRead = false,
+                CreatedAt = now
+            }, ct);
+        }
+
+        // 6. Outbox 异步解锁 SAP 单据状态
+        var snapshot = _db.Snapshots.FirstOrDefault(s => s.InstanceId == instance.Id);
+        await AddOutboxAsync(instance, "WorkflowRevoked", "Revoked", snapshot?.DataSha256 ?? string.Empty, ct);
+
+        await _db.SaveChangesAsync(ct);
+        return instance;
     }
 
     private async Task<WorkflowTask> AddApprovalTaskAsync(WorkflowInstance instance, WorkflowGraphNode node, DateTime now, CancellationToken ct)
@@ -398,11 +558,19 @@ public class WorkflowEngine : IWorkflowEngine
 
     private static decimal ExtractDocTotal(string rawJson)
     {
-        using var document = JsonDocument.Parse(rawJson);
-        if (document.RootElement.ValueKind != JsonValueKind.Object) return 0m;
-        foreach (var property in document.RootElement.EnumerateObject())
-            if (property.Name.Equals("DocTotal", StringComparison.OrdinalIgnoreCase) && property.Value.TryGetDecimal(out var value))
-                return value;
-        return 0m;
+        try
+        {
+            var decompressed = Approval.Application.Common.Helpers.SnapshotCompressionHelper.DecompressJson(rawJson);
+            using var document = JsonDocument.Parse(decompressed);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return 0m;
+            foreach (var property in document.RootElement.EnumerateObject())
+                if (property.Name.Equals("DocTotal", StringComparison.OrdinalIgnoreCase) && property.Value.TryGetDecimal(out var value))
+                    return value;
+            return 0m;
+        }
+        catch
+        {
+            return 0m;
+        }
     }
 }

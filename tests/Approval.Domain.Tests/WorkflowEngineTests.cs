@@ -26,7 +26,8 @@ public class WorkflowEngineTests
         DbInitializer.SeedAsync(_db).GetAwaiter().GetResult();
         _traceContext = new TraceContext { TraceId = "trace_test_001" };
         var userDirectory = new UserDirectoryService(_db);
-        _engine = new WorkflowEngine(_db, _traceContext, userDirectory);
+        var ruleMatcher = new WorkflowRuleMatcher(_db);
+        _engine = new WorkflowEngine(_db, _traceContext, userDirectory, ruleMatcher);
     }
 
     [Fact]

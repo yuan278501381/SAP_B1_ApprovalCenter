@@ -36,67 +36,78 @@ public class SqlServerConcurrencyAndIntegrationTests : IClassFixture<SqlServerWe
     {
         var objectKey = "TEST_SQL_" + Random.Shared.Next(100000, 999999);
         var idempotencyKey = Guid.NewGuid().ToString("N");
+        string? instanceId = null;
 
-        // 1. 提交型号订单审批
-        var submitRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/objects/CHORDR/{objectKey}/submit?companyId=DB_KCC");
-        submitRequest.Headers.Add("Idempotency-Key", idempotencyKey);
-        submitRequest.Headers.Add("X-Trace-Id", "trace_sql_e2e");
-        AddIdentity(submitRequest, "manager", "张经理");
-
-        var submitResp = await _client.SendAsync(submitRequest);
-        submitResp.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var submitBody = await submitResp.Content.ReadFromJsonAsync<JsonObject>();
-        var instanceId = submitBody!["data"]!["instanceId"]!.GetValue<string>();
-        instanceId.Should().NotBeNullOrEmpty();
-
-        // 2. 验证数据直接存在于真实 SQL Server 中
-        var options = new DbContextOptionsBuilder<ApprovalDbContext>().UseSqlServer(SqlServerConnStr).Options;
-        await using (var db = new ApprovalDbContext(options))
+        try
         {
-            var dbInstance = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId);
-            dbInstance.Should().NotBeNull();
-            dbInstance!.Status.Should().Be(WorkflowStatus.Running);
-            dbInstance.ObjectKey.Should().Be(objectKey);
+            // 1. 提交型号订单审批
+            var submitRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/objects/CHORDR/{objectKey}/submit?companyId=DB_KCC");
+            submitRequest.Headers.Add("Idempotency-Key", idempotencyKey);
+            submitRequest.Headers.Add("X-Trace-Id", "trace_sql_e2e");
+            AddIdentity(submitRequest, "manager", "张经理");
 
-            var dbSnapshot = await db.Snapshots.FirstOrDefaultAsync(s => s.InstanceId == instanceId);
-            dbSnapshot.Should().NotBeNull();
-            dbSnapshot!.DataSha256.Should().NotBeNullOrEmpty();
+            var submitResp = await _client.SendAsync(submitRequest);
+            submitResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
-            var dbOutbox = await db.Outboxes.FirstOrDefaultAsync(o => o.AggregateId == instanceId);
-            dbOutbox.Should().NotBeNull();
-            dbOutbox!.EventType.Should().Be("WorkflowStarted");
+            var submitBody = await submitResp.Content.ReadFromJsonAsync<JsonObject>();
+            instanceId = submitBody!["data"]!["instanceId"]!.GetValue<string>();
+            instanceId.Should().NotBeNullOrEmpty();
+
+            // 2. 验证数据直接存在于真实 SQL Server 中
+            var options = new DbContextOptionsBuilder<ApprovalDbContext>().UseSqlServer(SqlServerConnStr).Options;
+            await using (var db = new ApprovalDbContext(options))
+            {
+                var dbInstance = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId);
+                dbInstance.Should().NotBeNull();
+                dbInstance!.Status.Should().Be(WorkflowStatus.Running);
+                dbInstance.ObjectKey.Should().Be(objectKey);
+
+                var dbSnapshot = await db.Snapshots.FirstOrDefaultAsync(s => s.InstanceId == instanceId);
+                dbSnapshot.Should().NotBeNull();
+                dbSnapshot!.DataSha256.Should().NotBeNullOrEmpty();
+
+                var dbOutbox = await db.Outboxes.FirstOrDefaultAsync(o => o.AggregateId == instanceId);
+                dbOutbox.Should().NotBeNull();
+                dbOutbox!.EventType.Should().Be("WorkflowStarted");
+            }
+
+            // 3. 执行审批 (由 manager / SALE01 审核)
+            var tasksRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/tasks?scope=mine&status=pending");
+            AddIdentity(tasksRequest, "manager", "系统管理员");
+            var tasksResp = await _client.SendAsync(tasksRequest);
+            var tasksBody = await tasksResp.Content.ReadFromJsonAsync<JsonObject>();
+            var items = tasksBody!["data"]!["items"]!.AsArray();
+            var targetTask = items.FirstOrDefault(i => i!["instanceId"]!.GetValue<string>() == instanceId);
+            targetTask.Should().NotBeNull();
+
+            var taskId = targetTask!["taskId"]!.GetValue<string>();
+
+            var decisionRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/tasks/{taskId}/decisions");
+            decisionRequest.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+            AddIdentity(decisionRequest, "manager", "系统管理员");
+            decisionRequest.Content = JsonContent.Create(new { Decision = "Approve", Comments = "SQL Server 实测审批同意" });
+
+            var decisionResp = await _client.SendAsync(decisionRequest);
+            decisionResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // 4. 再次验证 SQL Server 状态已更新为 Approved 或下一节点
+            await using (var db = new ApprovalDbContext(options))
+            {
+                var dbInstance = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId);
+                dbInstance.Should().NotBeNull();
+                dbInstance!.Status.Should().Be(WorkflowStatus.Approved);
+
+                var completedTask = await db.Tasks.FirstOrDefaultAsync(t => t.Id == taskId);
+                completedTask!.Status.Should().Be(Approval.Domain.Enums.TaskStatus.Completed);
+                completedTask.Decision.Should().Be(TaskDecision.Approve);
+            }
         }
-
-        // 3. 执行审批 (金额 85600 > 50000，走 director 业务总监终审节点)
-        var tasksRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/tasks?scope=mine&status=pending");
-        AddIdentity(tasksRequest, "director", "业务总监");
-        var tasksResp = await _client.SendAsync(tasksRequest);
-        var tasksBody = await tasksResp.Content.ReadFromJsonAsync<JsonObject>();
-        var items = tasksBody!["data"]!["items"]!.AsArray();
-        var targetTask = items.FirstOrDefault(i => i!["instanceId"]!.GetValue<string>() == instanceId);
-        targetTask.Should().NotBeNull();
-
-        var taskId = targetTask!["taskId"]!.GetValue<string>();
-
-        var decisionRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/tasks/{taskId}/decisions");
-        decisionRequest.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
-        AddIdentity(decisionRequest, "director", "业务总监");
-        decisionRequest.Content = JsonContent.Create(new { Decision = "Approve", Comments = "SQL Server 实测审批同意" });
-
-        var decisionResp = await _client.SendAsync(decisionRequest);
-        decisionResp.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // 4. 再次验证 SQL Server 状态已更新为 Approved 或下一节点
-        await using (var db = new ApprovalDbContext(options))
+        finally
         {
-            var dbInstance = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId);
-            dbInstance.Should().NotBeNull();
-            dbInstance!.Status.Should().Be(WorkflowStatus.Approved);
-
-            var completedTask = await db.Tasks.FirstOrDefaultAsync(t => t.Id == taskId);
-            completedTask!.Status.Should().Be(Approval.Domain.Enums.TaskStatus.Completed);
-            completedTask.Decision.Should().Be(TaskDecision.Approve);
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                await CleanupInstanceAsync(instanceId);
+            }
         }
     }
 
@@ -105,30 +116,41 @@ public class SqlServerConcurrencyAndIntegrationTests : IClassFixture<SqlServerWe
     {
         var objectKey = "CONCUR_" + Random.Shared.Next(100000, 999999);
         const int concurrentRequests = 8;
-
         var results = new ConcurrentBag<(HttpStatusCode Status, string Body)>();
 
-        // 启动 8 个并发 Task 对同一单据同时发起审批
-        var tasks = Enumerable.Range(0, concurrentRequests).Select(async i =>
+        try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/objects/CHORDR/{objectKey}/submit?companyId=DB_KCC");
-            req.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N")); // 不同的幂等键
-            req.Headers.Add("X-Trace-Id", $"trace_concur_{i}");
-            AddIdentity(req, "manager", "张经理");
+            // 启动 8 个并发 Task 对同一单据同时发起审批
+            var tasks = Enumerable.Range(0, concurrentRequests).Select(async i =>
+            {
+                var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/objects/CHORDR/{objectKey}/submit?companyId=DB_KCC");
+                req.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+                req.Headers.Add("X-Trace-Id", $"trace_concur_{i}");
+                AddIdentity(req, "manager", "张经理");
 
-            var resp = await _client.SendAsync(req);
-            var body = await resp.Content.ReadAsStringAsync();
-            results.Add((resp.StatusCode, body));
-        });
+                var resp = await _client.SendAsync(req);
+                var body = await resp.Content.ReadAsStringAsync();
+                results.Add((resp.StatusCode, body));
+            });
 
-        await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
 
-        // 验证：必须且只能有 1 个成功 (200 OK)，其余全部被拦截
-        var successes = results.Where(r => r.Status == HttpStatusCode.OK).ToList();
-        var failures = results.Where(r => r.Status != HttpStatusCode.OK).ToList();
+            var successes = results.Where(r => r.Status == HttpStatusCode.OK).ToList();
+            var failures = results.Where(r => r.Status != HttpStatusCode.OK).ToList();
 
-        successes.Should().HaveCount(1, "对于同一单据，SQL Server UX_wf_instance_running_object 唯一约束必须保证只能创建 1 个运行中的流程实例");
-        failures.Should().HaveCount(concurrentRequests - 1);
+            successes.Should().HaveCount(1, "对于同一单据，SQL Server UX_wf_instance_running_object 唯一约束必须保证只能创建 1 个运行中的流程实例");
+            failures.Should().HaveCount(concurrentRequests - 1);
+        }
+        finally
+        {
+            var options = new DbContextOptionsBuilder<ApprovalDbContext>().UseSqlServer(SqlServerConnStr).Options;
+            await using var db = new ApprovalDbContext(options);
+            var instances = await db.Instances.Where(i => i.ObjectKey == objectKey).ToListAsync();
+            foreach (var inst in instances)
+            {
+                await CleanupInstanceAsync(inst.Id);
+            }
+        }
     }
 
     [Fact]
@@ -182,6 +204,30 @@ public class SqlServerConcurrencyAndIntegrationTests : IClassFixture<SqlServerWe
                 await db.SaveChangesAsync();
             }
         }
+    }
+
+    private static async Task CleanupInstanceAsync(string instanceId)
+    {
+        var options = new DbContextOptionsBuilder<ApprovalDbContext>().UseSqlServer(SqlServerConnStr).Options;
+        await using var db = new ApprovalDbContext(options);
+        var tasks = await db.Tasks.Where(t => t.InstanceId == instanceId).ToListAsync();
+        var taskIds = tasks.Select(t => t.Id).ToList();
+        var candidates = await db.TaskCandidates.Where(c => taskIds.Contains(c.TaskId)).ToListAsync();
+        var logs = await db.ActionLogs.Where(l => l.InstanceId == instanceId).ToListAsync();
+        var nodes = await db.NodeInstances.Where(n => n.InstanceId == instanceId).ToListAsync();
+        var snapshots = await db.Snapshots.Where(s => s.InstanceId == instanceId).ToListAsync();
+        var outboxes = await db.Outboxes.Where(o => o.AggregateId == instanceId).ToListAsync();
+        var instance = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId);
+
+        db.TaskCandidates.RemoveRange(candidates);
+        db.Tasks.RemoveRange(tasks);
+        db.ActionLogs.RemoveRange(logs);
+        db.NodeInstances.RemoveRange(nodes);
+        db.Snapshots.RemoveRange(snapshots);
+        db.Outboxes.RemoveRange(outboxes);
+        if (instance != null) db.Instances.Remove(instance);
+
+        await db.SaveChangesAsync();
     }
 
     private static void AddIdentity(HttpRequestMessage request, string userCode, string userName)

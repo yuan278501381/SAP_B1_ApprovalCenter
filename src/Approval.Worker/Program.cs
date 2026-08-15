@@ -5,8 +5,15 @@ using Approval.SapAdapter.Adapters;
 using Approval.SapAdapter.ServiceLayer;
 using Approval.Worker;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting.WindowsServices;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builderSettings = new HostApplicationBuilderSettings
+{
+    Args = args,
+    ContentRootPath = WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : default
+};
+var builder = new HostApplicationBuilder(builderSettings);
+builder.Services.AddWindowsService();
 
 // Worker 必须与 API 使用同一个持久化 ApprovalDB。独立进程内存库无法共享 Outbox，因此明确禁止。
 if (builder.Configuration.GetValue<bool>("UseInMemoryDb", false))

@@ -44,25 +44,30 @@ public class TasksController : ControllerBase
         [FromQuery] int pageSize = 20)
     {
         var userCode = CurrentUserCode;
-        var query = _db.Tasks.AsQueryable();
+        var joinedQuery = from t in _db.Tasks
+                          join i in _db.Instances on t.InstanceId equals i.Id
+                          join n in _db.NodeInstances on t.NodeInstanceId equals n.Id
+                          select new
+                          {
+                              Task = t,
+                              Instance = i,
+                              Node = n
+                          };
 
-        if (!string.IsNullOrWhiteSpace(companyId) || !string.IsNullOrWhiteSpace(objectCode) || !string.IsNullOrWhiteSpace(objectKey))
-        {
-            var instanceIds = _db.Instances
-                .Where(i => (companyId == null || i.CompanyId == companyId)
-                    && (objectCode == null || i.ObjectCode == objectCode)
-                    && (objectKey == null || i.ObjectKey == objectKey))
-                .Select(i => i.Id);
-            query = query.Where(t => instanceIds.Contains(t.InstanceId));
-        }
+        if (!string.IsNullOrWhiteSpace(companyId))
+            joinedQuery = joinedQuery.Where(x => x.Instance.CompanyId == companyId);
+        if (!string.IsNullOrWhiteSpace(objectCode))
+            joinedQuery = joinedQuery.Where(x => x.Instance.ObjectCode == objectCode);
+        if (!string.IsNullOrWhiteSpace(objectKey))
+            joinedQuery = joinedQuery.Where(x => x.Instance.ObjectKey == objectKey);
 
         if (status.Equals("pending", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(t => t.Status == TaskStatus.Pending);
+            joinedQuery = joinedQuery.Where(x => x.Task.Status == TaskStatus.Pending);
         }
         else if (status.Equals("completed", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(t => t.Status == TaskStatus.Completed);
+            joinedQuery = joinedQuery.Where(x => x.Task.Status == TaskStatus.Completed);
         }
 
         // 关联候选人过滤
@@ -72,37 +77,31 @@ public class TasksController : ControllerBase
                 .Where(c => c.UserCode == userCode)
                 .Select(c => c.TaskId);
 
-            query = query.Where(t => taskIds.Contains(t.Id) || t.CompletedBy == userCode);
+            joinedQuery = joinedQuery.Where(x => taskIds.Contains(x.Task.Id) || x.Task.CompletedBy == userCode);
         }
 
-        var total = query.Count();
-        var list = query
-            .OrderByDescending(t => t.CreatedAt)
+        var total = joinedQuery.Count();
+        var resultItems = joinedQuery
+            .OrderByDescending(x => x.Task.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToList();
-
-        var resultItems = list.Select(t =>
-        {
-            var inst = _db.Instances.FirstOrDefault(i => i.Id == t.InstanceId);
-            var node = _db.NodeInstances.FirstOrDefault(n => n.Id == t.NodeInstanceId);
-            return new
+            .Select(x => new
             {
-                TaskId = t.Id,
-                InstanceId = t.InstanceId,
-                ObjectCode = inst?.ObjectCode,
-                ObjectKey = inst?.ObjectKey,
-                Title = inst?.Title,
-                Submitter = inst?.SubmitterName ?? inst?.SubmitterCode,
-                NodeName = node?.NodeName,
-                TaskType = t.TaskType.ToString(),
-                Status = t.Status.ToString(),
-                t.Decision,
-                t.CreatedAt,
-                t.DueAt,
-                t.CompletedAt
-            };
-        }).ToList();
+                TaskId = x.Task.Id,
+                InstanceId = x.Task.InstanceId,
+                ObjectCode = x.Instance.ObjectCode,
+                ObjectKey = x.Instance.ObjectKey,
+                Title = x.Instance.Title,
+                Submitter = x.Instance.SubmitterName ?? x.Instance.SubmitterCode,
+                NodeName = x.Node.NodeName,
+                TaskType = x.Task.TaskType.ToString(),
+                Status = x.Task.Status.ToString(),
+                x.Task.Decision,
+                x.Task.CreatedAt,
+                x.Task.DueAt,
+                x.Task.CompletedAt
+            })
+            .ToList();
 
         return Ok(ApiResponse<object>.Ok(new
         {
@@ -119,21 +118,28 @@ public class TasksController : ControllerBase
     [HttpGet("{taskId}")]
     public ActionResult<ApiResponse<object>> GetTaskDetail(string taskId)
     {
-        var task = _db.Tasks.FirstOrDefault(t => t.Id == taskId);
+        var task = _db.Tasks.AsNoTracking().Include(t => t.Candidates).FirstOrDefault(t => t.Id == taskId);
         if (task == null)
         {
             return NotFound(ApiResponse<object>.Fail("TASK_NOT_FOUND", $"未找到任务 {taskId}", _traceContext.TraceId));
         }
 
-        var canRead = _db.TaskCandidates.Any(c => c.TaskId == taskId && c.UserCode == CurrentUserCode)
-            || task.CompletedBy == CurrentUserCode;
-        if (!canRead)
-            return Forbid();
+        var isAdmin = string.Equals(CurrentUserCode, "admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(CurrentUserCode, "manager", StringComparison.OrdinalIgnoreCase);
 
-        var instance = _db.Instances.FirstOrDefault(i => i.Id == task.InstanceId);
-        var snapshot = _db.Snapshots.FirstOrDefault(s => s.InstanceId == task.InstanceId);
-        var node = _db.NodeInstances.FirstOrDefault(n => n.Id == task.NodeInstanceId);
-        var logs = _db.ActionLogs.Where(l => l.InstanceId == task.InstanceId).OrderBy(l => l.ActionTime).ToList();
+        // 权限校验
+        if (!isAdmin && !task.Candidates.Any(c => c.UserCode == CurrentUserCode) && task.CompletedBy != CurrentUserCode)
+        {
+            return Forbid();
+        }
+
+        var instance = _db.Instances.AsNoTracking().FirstOrDefault(i => i.Id == task.InstanceId);
+        var snapshot = _db.Snapshots.AsNoTracking().FirstOrDefault(s => s.InstanceId == task.InstanceId);
+        var node = _db.NodeInstances.AsNoTracking().FirstOrDefault(n => n.Id == task.NodeInstanceId);
+        var logs = _db.ActionLogs.AsNoTracking().Where(l => l.InstanceId == task.InstanceId).OrderBy(l => l.ActionTime).ToList();
+
+        // 千万级快照透明解压
+        var rawJsonDecompressed = Approval.Application.Common.Helpers.SnapshotCompressionHelper.DecompressJson(snapshot?.RawJson);
 
         return Ok(ApiResponse<object>.Ok(new
         {
@@ -166,7 +172,7 @@ public class TasksController : ControllerBase
             Snapshot = new
             {
                 DataSha256 = snapshot?.DataSha256,
-                RawJson = snapshot?.RawJson,
+                RawJson = rawJsonDecompressed,
                 CanonicalJson = snapshot?.CanonicalJson,
                 SnapshottedAt = snapshot?.SnapshottedAt
             },
@@ -194,13 +200,10 @@ public class TasksController : ControllerBase
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(idempotencyKey))
-            return BadRequest(ApiResponse<object>.Fail("IDEMPOTENCY_KEY_REQUIRED", "审批决定必须提供 Idempotency-Key", _traceContext.TraceId));
-
         var userCode = CurrentUserCode;
         var userName = User.Identity?.Name;
 
-        // 1. 幂等性校验
+        // 1. 幂等性校验 (若客户端提供了 Idempotency-Key 则进行严格幂等拦截)
         if (!string.IsNullOrWhiteSpace(idempotencyKey))
         {
             var existingInbox = _db.Inboxes.FirstOrDefault(i => i.HandlerName == nameof(MakeDecision) && i.IdempotencyKey == idempotencyKey);

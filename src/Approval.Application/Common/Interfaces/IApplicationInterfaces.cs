@@ -9,6 +9,7 @@ public interface IApprovalDbContext
     IQueryable<WorkflowDefinition> Definitions { get; }
     IQueryable<WorkflowDefinitionVersion> DefinitionVersions { get; }
     IQueryable<WorkflowBinding> Bindings { get; }
+    IQueryable<WorkflowRule> Rules { get; }
     IQueryable<WorkflowInstance> Instances { get; }
     IQueryable<WorkflowSnapshot> Snapshots { get; }
     IQueryable<WorkflowNodeInstance> NodeInstances { get; }
@@ -19,10 +20,32 @@ public interface IApprovalDbContext
     IQueryable<WorkflowInbox> Inboxes { get; }
     IQueryable<SapSyncState> SapSyncStates { get; }
     IQueryable<SysUserMapping> UserMappings { get; }
+    IQueryable<SysNotification> Notifications { get; }
+    IQueryable<SysUiLayout> UiLayouts { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task AddAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
 }
+
+public interface IWorkflowRuleMatcher
+{
+    /// <summary>
+    /// 根据单据/主数据属性（制单人、部门、金额、自定义字段）匹配命中最高优先级的审批规则与流程版本
+    /// </summary>
+    Task<RuleMatchResult> MatchRuleAsync(
+        string companyId,
+        string objectCode,
+        SapObjectPayload payload,
+        CancellationToken ct = default);
+}
+
+public record RuleMatchResult(
+    bool ShouldTrigger,
+    string? TriggerReason,
+    WorkflowRule? MatchedRule,
+    string? TargetVersionId,
+    string? TargetDefinitionId
+);
 
 public interface IUserDirectoryService
 {
@@ -34,6 +57,40 @@ public interface IUserDirectoryService
         IEnumerable<string> candidateValues,
         string submitterCode,
         CancellationToken ct = default);
+}
+
+public record FieldMetaInfo(
+    string FieldName,
+    string Description,
+    string DataType,
+    Dictionary<string, string>? ValidValues
+);
+
+public record ObjectMetadataResult(
+    string ObjectCode,
+    string TableName,
+    Dictionary<string, FieldMetaInfo> HeaderFields,
+    Dictionary<string, Dictionary<string, FieldMetaInfo>> ChildTableFields
+);
+
+public record CompanyInfoResult(
+    string CompanyId,
+    string CompanyName,
+    string? Address,
+    string? Phone
+);
+
+public interface ISapMetadataService
+{
+    /// <summary>
+    /// 获取 SAP 公司真实全称/描述与基本信息 (从 OADM / Service Layer 提取)
+    /// </summary>
+    Task<CompanyInfoResult> GetCompanyInfoAsync(string companyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// 从 SAP 数据库 (CUFD/UFD1/无对象表) 获取单据及子表的所有动态字段中英文定义与下拉有效值描述字典
+    /// </summary>
+    Task<ObjectMetadataResult> GetObjectMetadataAsync(string companyId, string objectCode, CancellationToken ct = default);
 }
 
 public interface ITraceContext
@@ -78,5 +135,15 @@ public interface IWorkflowEngine
         string targetUserCode,
         string? targetUserName,
         string? comments,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// 发起人撤回/取消审批申请 (Revoke): 将处于审批中的流程终止并作废未决任务，向所有历史审批人精准发送撤销通知（排除发起人自己）
+    /// </summary>
+    Task<WorkflowInstance> RevokeWorkflowAsync(
+        string instanceId,
+        string operatorCode,
+        string? operatorName,
+        string? reason,
         CancellationToken ct = default);
 }

@@ -29,20 +29,20 @@ GO
 IF NOT EXISTS (SELECT 1 FROM dbo.sys_user_mapping WHERE sap_user_code = 'manager')
 BEGIN
     INSERT INTO dbo.sys_user_mapping (id, sap_user_id, sap_user_code, ad_user_code, display_name, department, manager_code, roles, is_active)
-    VALUES ('USER_MGR', 1, 'manager', 'E001', N'张经理', N'销售部', 'director', N'SalesManager,GeneralApprover', 1);
+    VALUES ('USER_MGR', 1, 'manager', 'E001', N'?????', N'?????', 'director', N'SalesManager,GeneralApprover', 1);
 END
 GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.sys_user_mapping WHERE sap_user_code = 'director')
 BEGIN
     INSERT INTO dbo.sys_user_mapping (id, sap_user_id, sap_user_code, ad_user_code, display_name, department, manager_code, roles, is_active)
-    VALUES ('USER_DIR', 2, 'director', 'E002', N'业务总监', N'管理层', NULL, N'SalesDirector,ExecutiveApprover', 1);
+    VALUES ('USER_DIR', 2, 'director', 'E002', N'??????', N'??????', NULL, N'SalesDirector,ExecutiveApprover', 1);
 END
 GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.sys_user_mapping WHERE sap_user_code = '16836')
 BEGIN
     INSERT INTO dbo.sys_user_mapping (id, sap_user_id, sap_user_code, ad_user_code, display_name, department, manager_code, roles, is_active)
-    VALUES ('USER_16836', 200, '16836', 'E16836', N'王桃园', N'销售一部', 'manager', N'SalesRepresentative', 1);
+    VALUES ('USER_16836', 200, '16836', 'E16836', N'?????', N'???????', 'manager', N'SalesRepresentative', 1);
 END
 GO

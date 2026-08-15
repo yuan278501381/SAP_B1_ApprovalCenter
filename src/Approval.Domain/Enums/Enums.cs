@@ -28,7 +28,33 @@ public enum WorkflowStatus
     /// <summary>
     /// 审批人退回给发起人；当前实例终止，可修改后重新提交新实例
     /// </summary>
-    Returned = 5
+    Returned = 5,
+
+    /// <summary>
+    /// 单据数据变更导致流程重路由作废
+    /// </summary>
+    Superceded = 6
+}
+
+/// <summary>
+/// 人员范围模式
+/// </summary>
+public enum UserScopeMode
+{
+    /// <summary>
+    /// 全部用户均触发审批
+    /// </summary>
+    All = 1,
+
+    /// <summary>
+    /// 白名单模式：仅名单内的用户制单时触发审批
+    /// </summary>
+    Whitelist = 2,
+
+    /// <summary>
+    /// 黑名单模式：名单内的用户制单免审，其余用户制单均触发审批
+    /// </summary>
+    Blacklist = 3
 }
 
 /// <summary>

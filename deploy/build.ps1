@@ -39,17 +39,17 @@ Push-Location $webDir
 npm run build
 Pop-Location
 
-# 3. 发布后端 API 服务 (跨架构单文件发布)
+# 3. 发布后端 API 服务 (跨架构自包含独立发布)
 Write-Host "`n[3/4] 发布后端 API 服务 ($Architecture)..." -ForegroundColor Yellow
 $apiProj = Join-Path $rootDir "src\Approval.Api\Approval.Api.csproj"
 $apiOut = Join-Path $distDir "Approval.Api"
-dotnet publish $apiProj -c $Configuration -r $Architecture --self-contained false -o $apiOut
+dotnet publish $apiProj -c $Configuration -r $Architecture --self-contained true -o $apiOut
 
 # 4. 发布后台 Worker 守护进程
 Write-Host "`n[4/4] 发布后台 Worker 守护进程 ($Architecture)..." -ForegroundColor Yellow
 $workerProj = Join-Path $rootDir "src\Approval.Worker\Approval.Worker.csproj"
 $workerOut = Join-Path $distDir "Approval.Worker"
-dotnet publish $workerProj -c $Configuration -r $Architecture --self-contained false -o $workerOut
+dotnet publish $workerProj -c $Configuration -r $Architecture --self-contained true -o $workerOut
 
 # 拷贝前端产物至 API wwwroot
 $wwwroot = Join-Path $apiOut "wwwroot"

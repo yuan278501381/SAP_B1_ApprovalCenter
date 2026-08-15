@@ -113,9 +113,45 @@ public static class DbInitializer
             IsActive = true
         };
 
+        // 3. 初始规则矩阵 (WorkflowRule)
+        var chordrRule = new WorkflowRule
+        {
+            Id = "RULE_CHORDR_DEFAULT",
+            CompanyId = "DB_KCC",
+            ObjectCode = "CHORDR",
+            ObjectType = "Document",
+            RuleName = "型号订单全员审批规则",
+            Description = "适用于型号订单 UDO 的默认全员审批触发与分流规则",
+            TriggerMode = "AutoAlways",
+            TriggerFieldName = "U_APSubmit",
+            UserScopeMode = UserScopeMode.All,
+            TargetDefinitionId = chordrDef.Id,
+            TargetVersionId = chordrVer.Id,
+            Priority = 10,
+            IsActive = true
+        };
+
+        var choqutRule = new WorkflowRule
+        {
+            Id = "RULE_CHOQUT_DEFAULT",
+            CompanyId = "DB_KCC",
+            ObjectCode = "CHOQUT",
+            ObjectType = "Document",
+            RuleName = "型号报价单快速审批规则",
+            Description = "适用于型号报价单 UDO 的默认审批流转规则",
+            TriggerMode = "AutoAlways",
+            TriggerFieldName = "U_APSubmit",
+            UserScopeMode = UserScopeMode.All,
+            TargetDefinitionId = choqutDef.Id,
+            TargetVersionId = choqutVer.Id,
+            Priority = 10,
+            IsActive = true
+        };
+
         await db.Definitions.AddRangeAsync(chordrDef, choqutDef);
         await db.DefinitionVersions.AddRangeAsync(chordrVer, choqutVer);
         await db.Bindings.AddRangeAsync(chordrBinding, choqutBinding);
+        await db.Rules.AddRangeAsync(chordrRule, choqutRule);
 
         await db.SaveChangesAsync();
     }

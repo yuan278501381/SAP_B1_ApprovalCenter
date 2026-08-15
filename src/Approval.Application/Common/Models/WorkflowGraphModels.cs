@@ -7,6 +7,7 @@ namespace Approval.Application.Common.Models;
 /// </summary>
 public class WorkflowGraphDefinition
 {
+    public bool AllowSubmitterRevoke { get; set; } = true;
     public List<WorkflowGraphNode> Nodes { get; set; } = new();
     public List<WorkflowGraphEdge> Edges { get; set; } = new();
 }

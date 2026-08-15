@@ -17,6 +17,7 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
     public DbSet<WorkflowDefinition> Definitions => Set<WorkflowDefinition>();
     public DbSet<WorkflowDefinitionVersion> DefinitionVersions => Set<WorkflowDefinitionVersion>();
     public DbSet<WorkflowBinding> Bindings => Set<WorkflowBinding>();
+    public DbSet<WorkflowRule> Rules => Set<WorkflowRule>();
     public DbSet<WorkflowInstance> Instances => Set<WorkflowInstance>();
     public DbSet<WorkflowSnapshot> Snapshots => Set<WorkflowSnapshot>();
     public DbSet<WorkflowNodeInstance> NodeInstances => Set<WorkflowNodeInstance>();
@@ -27,10 +28,13 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
     public DbSet<WorkflowInbox> Inboxes => Set<WorkflowInbox>();
     public DbSet<SapSyncState> SapSyncStates => Set<SapSyncState>();
     public DbSet<SysUserMapping> UserMappings => Set<SysUserMapping>();
+    public DbSet<SysNotification> Notifications => Set<SysNotification>();
+    public DbSet<SysUiLayout> UiLayouts => Set<SysUiLayout>();
 
     IQueryable<WorkflowDefinition> IApprovalDbContext.Definitions => Definitions;
     IQueryable<WorkflowDefinitionVersion> IApprovalDbContext.DefinitionVersions => DefinitionVersions;
     IQueryable<WorkflowBinding> IApprovalDbContext.Bindings => Bindings;
+    IQueryable<WorkflowRule> IApprovalDbContext.Rules => Rules;
     IQueryable<WorkflowInstance> IApprovalDbContext.Instances => Instances;
     IQueryable<WorkflowSnapshot> IApprovalDbContext.Snapshots => Snapshots;
     IQueryable<WorkflowNodeInstance> IApprovalDbContext.NodeInstances => NodeInstances;
@@ -41,6 +45,8 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
     IQueryable<WorkflowInbox> IApprovalDbContext.Inboxes => Inboxes;
     IQueryable<SapSyncState> IApprovalDbContext.SapSyncStates => SapSyncStates;
     IQueryable<SysUserMapping> IApprovalDbContext.UserMappings => UserMappings;
+    IQueryable<SysNotification> IApprovalDbContext.Notifications => Notifications;
+    IQueryable<SysUiLayout> IApprovalDbContext.UiLayouts => UiLayouts;
 
     public new async Task AddAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
     {
@@ -87,6 +93,27 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.ConditionExpr).HasMaxLength(500);
             b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.IsActive, x.Priority });
             b.HasOne(x => x.Version).WithMany().HasForeignKey(x => x.VersionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // wf_rule
+        modelBuilder.Entity<WorkflowRule>(b =>
+        {
+            b.ToTable("wf_rule");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasMaxLength(64);
+            b.Property(x => x.CompanyId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.ObjectCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.ObjectType).HasMaxLength(32).HasDefaultValue("Document");
+            b.Property(x => x.RuleName).HasMaxLength(128).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(500);
+            b.Property(x => x.TriggerMode).HasMaxLength(32).HasDefaultValue("AutoAlways");
+            b.Property(x => x.TriggerFieldName).HasMaxLength(64);
+            b.Property(x => x.UserScopeMode).HasConversion<string>().HasMaxLength(32);
+            b.Property(x => x.ConditionExpr).HasMaxLength(500);
+            b.Property(x => x.TargetDefinitionId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.TargetVersionId).HasMaxLength(64);
+            b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.IsActive, x.Priority });
+            b.HasOne(x => x.TargetDefinition).WithMany().HasForeignKey(x => x.TargetDefinitionId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // wf_instance
@@ -151,6 +178,10 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.Comments).HasMaxLength(1000);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.HasIndex(x => new { x.Status, x.DueAt });
+            b.HasIndex(x => new { x.Status, x.CreatedAt });
+            b.HasIndex(x => new { x.Status, x.InstanceId, x.CreatedAt })
+                .HasDatabaseName("IX_wf_task_pending_filtered")
+                .HasFilter("[status] = 'Pending'");
             b.HasOne(x => x.Instance).WithMany(x => x.Tasks).HasForeignKey(x => x.InstanceId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.NodeInstance).WithMany(x => x.Tasks).HasForeignKey(x => x.NodeInstanceId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -200,6 +231,9 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.LockId).HasMaxLength(64);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.HasIndex(x => new { x.Status, x.NextRetryAt });
+            b.HasIndex(x => new { x.Status, x.NextRetryAt, x.CreatedAt })
+                .HasDatabaseName("IX_wf_outbox_unprocessed_filtered")
+                .HasFilter("[status] = 'Pending' OR [status] = 'Processing'");
         });
 
         // wf_inbox
@@ -242,6 +276,36 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.DelegateUserCode).HasMaxLength(64);
             b.HasIndex(x => x.SapUserCode).IsUnique();
             b.HasIndex(x => x.AdUserCode).IsUnique();
+        });
+
+        // sys_notification
+        modelBuilder.Entity<SysNotification>(b =>
+        {
+            b.ToTable("sys_notification");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasMaxLength(64);
+            b.Property(x => x.RecipientUserCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.SenderUserCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.InstanceId).HasMaxLength(64);
+            b.Property(x => x.ObjectCode).HasMaxLength(64);
+            b.Property(x => x.ObjectKey).HasMaxLength(128);
+            b.Property(x => x.Title).HasMaxLength(256).IsRequired();
+            b.Property(x => x.Type).HasMaxLength(32).IsRequired();
+            b.HasIndex(x => new { x.RecipientUserCode, x.IsRead, x.CreatedAt });
+        });
+
+        // sys_ui_layout (企业级全公司/用户分层 UI 布局配置)
+        modelBuilder.Entity<SysUiLayout>(b =>
+        {
+            b.ToTable("sys_ui_layout");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasMaxLength(128);
+            b.Property(x => x.CompanyId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.ObjectCode).HasMaxLength(64).IsRequired();
+            b.Property(x => x.UserCode).HasMaxLength(64);
+            b.Property(x => x.ConfigType).HasMaxLength(64).HasDefaultValue("HeaderAndTableLayout");
+            b.Property(x => x.UpdatedBy).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.UserCode });
         });
 
         // SQL 初始化脚本使用 snake_case；显式统一列名，避免 EF 默认 PascalCase 与 DDL 不匹配。

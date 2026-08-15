@@ -45,7 +45,8 @@ public class WorkflowSafetyTests
         var db = new ApprovalDbContext(options);
         await DbInitializer.SeedAsync(db);
         var userDirectory = new UserDirectoryService(db);
-        return (db, new WorkflowEngine(db, new TraceContext { TraceId = Guid.NewGuid().ToString("N") }, userDirectory));
+        var ruleMatcher = new WorkflowRuleMatcher(db);
+        return (db, new WorkflowEngine(db, new TraceContext { TraceId = Guid.NewGuid().ToString("N") }, userDirectory, ruleMatcher));
     }
 
     private static SapObjectPayload Payload(string objectCode, string objectKey, decimal total) => new()

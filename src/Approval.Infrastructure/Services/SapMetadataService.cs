@@ -353,8 +353,8 @@ public class SapMetadataService : ISapMetadataService
                 }
             }
 
-            // 4. 加载 SAP 核心系统字典 (销售员 OSLP, 付款条件 OCTG, 员工 OHEM 等)
-            await LoadSystemDictionariesAsync(conn, mainTable, headerFields, ct);
+            // 4. 加载 SAP 核心系统字典 (销售员 OSLP, 付款条件 OCTG, 员工 OHEM, 附加运费 OEXD, 税码 OSTC 等)
+            await LoadSystemDictionariesAsync(conn, mainTable, headerFields, childTableFields, ct);
 
             _logger.LogInformation("成功为对象 [{ObjectCode}] 加载 SAP 动态元数据 (表头字段: {HeaderCount}, 子表数: {ChildCount})",
                 objectCode, headerFields.Count / 2, childTableFields.Count);
@@ -371,6 +371,7 @@ public class SapMetadataService : ISapMetadataService
         SqlConnection conn,
         string mainTable,
         Dictionary<string, FieldMetaInfo> headerFields,
+        Dictionary<string, Dictionary<string, FieldMetaInfo>> childTableFields,
         CancellationToken ct)
     {
         // 4.1 销售员字典 (OSLP) -> SlpCode / U_SlpCode
@@ -383,7 +384,7 @@ public class SapMetadataService : ISapMetadataService
             {
                 var code = reader["SlpCode"]?.ToString()?.Trim() ?? string.Empty;
                 var name = reader["SlpName"]?.ToString()?.Trim() ?? string.Empty;
-                AttachValidValue(headerFields, "SlpCode", code, name);
+                AttachValidValue(headerFields, childTableFields, "SlpCode", code, name);
             }
         }
         catch { /* 忽略异常降级 */ }
@@ -398,7 +399,7 @@ public class SapMetadataService : ISapMetadataService
             {
                 var code = reader["GroupNum"]?.ToString()?.Trim() ?? string.Empty;
                 var name = reader["PymntGroup"]?.ToString()?.Trim() ?? string.Empty;
-                AttachValidValue(headerFields, "GroupNum", code, name);
+                AttachValidValue(headerFields, childTableFields, "GroupNum", code, name);
             }
         }
         catch { /* 忽略异常降级 */ }
@@ -413,17 +414,69 @@ public class SapMetadataService : ISapMetadataService
             {
                 var code = reader["empID"]?.ToString()?.Trim() ?? string.Empty;
                 var name = reader["FullName"]?.ToString()?.Trim() ?? string.Empty;
-                AttachValidValue(headerFields, "saleass", code, name);
-                AttachValidValue(headerFields, "Owner", code, name);
-                AttachValidValue(headerFields, "EmpID", code, name);
+                AttachValidValue(headerFields, childTableFields, "saleass", code, name);
+                AttachValidValue(headerFields, childTableFields, "Owner", code, name);
+                AttachValidValue(headerFields, childTableFields, "EmpID", code, name);
+            }
+        }
+        catch { /* 忽略异常降级 */ }
+
+        // 4.4 附加运费/费用代码字典 (OEXD) -> ExpnsCode / U_ExpnsCode / ExpenseCode
+        try
+        {
+            const string queryExd = "SELECT ExpnsCode, ExpnsName FROM OEXD;";
+            await using var cmd = new SqlCommand(queryExd, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var code = reader["ExpnsCode"]?.ToString()?.Trim() ?? string.Empty;
+                var name = reader["ExpnsName"]?.ToString()?.Trim() ?? string.Empty;
+                AttachValidValue(headerFields, childTableFields, "ExpnsCode", code, name);
+                AttachValidValue(headerFields, childTableFields, "ExpenseCode", code, name);
+                AttachValidValue(headerFields, childTableFields, "U_ExpnsCode", code, name);
+            }
+        }
+        catch { /* 忽略异常降级 */ }
+
+        // 4.5 税收代码字典 (OSTC) -> TaxCode / VatGroup / U_VatGroup
+        try
+        {
+            const string queryStc = "SELECT Code, Name FROM OSTC;";
+            await using var cmd = new SqlCommand(queryStc, conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var code = reader["Code"]?.ToString()?.Trim() ?? string.Empty;
+                var name = reader["Name"]?.ToString()?.Trim() ?? string.Empty;
+                AttachValidValue(headerFields, childTableFields, "TaxCode", code, name);
+                AttachValidValue(headerFields, childTableFields, "VatGroup", code, name);
+                AttachValidValue(headerFields, childTableFields, "U_VatGroup", code, name);
             }
         }
         catch { /* 忽略异常降级 */ }
     }
 
-    private static void AttachValidValue(Dictionary<string, FieldMetaInfo> fields, string key, string code, string name)
+    private static void AttachValidValue(
+        Dictionary<string, FieldMetaInfo> headerFields,
+        Dictionary<string, Dictionary<string, FieldMetaInfo>> childTableFields,
+        string key,
+        string code,
+        string name)
     {
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name)) return;
+
+        // 1. 表头字段匹配
+        AttachToDict(headerFields, key, code, name);
+
+        // 2. 子表字段匹配
+        foreach (var cMap in childTableFields.Values)
+        {
+            AttachToDict(cMap, key, code, name);
+        }
+    }
+
+    private static void AttachToDict(Dictionary<string, FieldMetaInfo> fields, string key, string code, string name)
+    {
         if (fields.TryGetValue(key, out var meta) && meta.ValidValues != null)
         {
             meta.ValidValues[code] = name;
@@ -431,6 +484,10 @@ public class SapMetadataService : ISapMetadataService
         if (fields.TryGetValue("U_" + key, out var uMeta) && uMeta.ValidValues != null)
         {
             uMeta.ValidValues[code] = name;
+        }
+        if (key.StartsWith("U_") && fields.TryGetValue(key.Substring(2), out var sMeta) && sMeta.ValidValues != null)
+        {
+            sMeta.ValidValues[code] = name;
         }
     }
 

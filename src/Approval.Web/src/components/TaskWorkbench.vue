@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 import DocDataViewer from './DocDataViewer.vue'
+import { appConfig, sapObjectMap, fallbackSapObjectStyle } from '../config'
 import {
   CheckCircle2,
   XCircle,
@@ -25,7 +26,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const launchParams = new URLSearchParams(window.location.search)
-const launchCompanyId = launchParams.get('companyId') || 'DB_KCC'
+const launchCompanyId = launchParams.get('companyId') || appConfig.defaultCompanyId
 const launchObjectCode = launchParams.get('objectCode')
 const launchObjectKey = launchParams.get('objectKey')
 const urlUser = launchParams.get('user') || launchParams.get('userCode')
@@ -76,45 +77,38 @@ const revoking = ref(false)
 const revokeReason = ref('')
 
 // SAP 业务对象中文映射 (对齐 OUDO 及标准单据对象)
-const SAP_OBJECT_NAMES: Record<string, string> = {
-  CHORDR: '型号订单',
-  CHOQUT: '型号报价单',
-  ORDR: '销售订单',
-  OQUT: '销售报价单',
-  OPOR: '采购订单',
-  OPDN: '采购收货单',
-  ODLN: '销售交货单',
-  OINV: '应收发票',
-  OPCH: '应付发票'
+// SAP 单据对象字典已统一收敛至 @/config/sapConfig.ts
+
+
+// 格式化单据标题为 Name(Code) 规范格式
+const formatDocTitle = (instance?: any) => {
+  if (!instance) return ''
+  const title = instance.title || ''
+  if (!taskDetail.value?.snapshot?.rawJson) return title
+
+  try {
+    const data = JSON.parse(taskDetail.value.snapshot.rawJson)
+    const code = data.U_CardCode || data.CardCode || ''
+    const name = data.U_CardName || data.CardName || title
+    if (code && name && !name.includes(code)) {
+      return `${name} (${code})`
+    }
+    return name
+  } catch {
+    return title
+  }
 }
 
-const getObjectTypeName = (code?: string) => {
+const getObjectTypeName = (code?: string): string => {
   if (!code) return '单据'
   const c = code.trim().toUpperCase()
-  return SAP_OBJECT_NAMES[c] || c
+  return sapObjectMap[c]?.name || c
 }
 
-// 不同单据类型专属配色方案
+// 不同单据类型专属配色方案 (来自统一配置中心)
 const getObjectStyle = (code?: string) => {
   const c = (code || '').trim().toUpperCase()
-  switch (c) {
-    case 'CHORDR':
-      return { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', numColor: '#2563eb' }
-    case 'CHOQUT':
-      return { bg: '#faf5ff', border: '#e9d5ff', color: '#7e22ce', numColor: '#9333ea' }
-    case 'ORDR':
-      return { bg: '#ecfdf5', border: '#a7f3d0', color: '#047857', numColor: '#059669' }
-    case 'OQUT':
-      return { bg: '#f0fdfa', border: '#99f6e4', color: '#0f766e', numColor: '#0d9488' }
-    case 'OPOR':
-    case 'OPDN':
-      return { bg: '#fffbeb', border: '#fde68a', color: '#b45309', numColor: '#d97706' }
-    case 'OINV':
-    case 'OPCH':
-      return { bg: '#fff1f2', border: '#fecdd3', color: '#be123c', numColor: '#e11d48' }
-    default:
-      return { bg: '#f1f5f9', border: '#cbd5e1', color: '#334155', numColor: '#475569' }
-  }
+  return sapObjectMap[c]?.style || fallbackSapObjectStyle
 }
 
 // 站内消息通知中心抽屉
@@ -630,7 +624,7 @@ onUnmounted(() => {
               >
                 {{ getObjectTypeName(taskDetail.instance?.objectCode) }} #{{ taskDetail.instance?.objectKey }}
               </span>
-              <h2 class="doc-main-title">{{ taskDetail.instance?.title }}</h2>
+              <h2 class="doc-main-title">{{ formatDocTitle(taskDetail.instance) }}</h2>
             </div>
 
             <div class="micro-right">
@@ -1204,10 +1198,19 @@ onUnmounted(() => {
 }
 
 .task-time-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  font-size: 10.5px;
+  gap: 0.35em;
+  font-size: 0.72rem;
+  line-height: 1;
   color: #94a3b8;
+}
+
+.task-time-row svg {
+  width: 1.05em;
+  height: 1.05em;
+  flex-shrink: 0;
+  vertical-align: -0.1em;
 }
 
 .queue-footer-tips {
@@ -1230,21 +1233,23 @@ onUnmounted(() => {
 
 .doc-view-scroll {
   flex: 1;
-  overflow-y: auto;
-  padding: 12px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
 }
 
 .doc-micro-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 5px;
+  flex-shrink: 0;
 }
 
 .micro-left {
@@ -1771,4 +1776,21 @@ onUnmounted(() => {
 
 .global-toast.success { background: #065f46; color: #fff; }
 .global-toast.error { background: #991b1b; color: #fff; }
+
+/* 响应式笔记本与 Windows 缩放优化 */
+@media (max-height: 768px) {
+  .workbench-three-pane {
+    padding: 6px;
+    gap: 6px;
+  }
+  .top-nav {
+    height: 40px;
+  }
+  .pane-left-queue {
+    width: 230px;
+  }
+  .pane-right-inspector {
+    width: 280px;
+  }
+}
 </style>

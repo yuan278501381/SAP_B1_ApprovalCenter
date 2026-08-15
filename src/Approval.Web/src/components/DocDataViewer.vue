@@ -2,6 +2,12 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import {
+  appConfig,
+  defaultPinnedFields,
+  defaultMemoFields,
+  getCurrencySymbol
+} from '../config'
+import {
   Code2,
   Building2,
   FileText,
@@ -9,15 +15,10 @@ import {
   Tag,
   Search,
   SlidersHorizontal,
-  Eye,
-  EyeOff,
   RotateCcw,
   Check,
   X,
   GripVertical,
-  Lock,
-  Unlock,
-  Move,
   Pin,
   PinOff,
   Plus,
@@ -25,7 +26,6 @@ import {
   Save,
   ShieldCheck,
   ArrowRightLeft,
-  Settings2,
   CheckCheck
 } from 'lucide-vue-next'
 
@@ -50,7 +50,7 @@ const props = withDefaults(
     companyId?: string
   }>(),
   {
-    companyId: 'DB_KCC'
+    companyId: appConfig.defaultCompanyId
   }
 )
 
@@ -70,10 +70,10 @@ const isAdmin = computed(() => {
 })
 
 // 主表直接拖拽模式
-const isHeaderReorderMode = ref(false)
+
 
 // 各子表直接拖拽排序模式映射 (tableKey -> boolean)
-const tableReorderModes = ref<Record<string, boolean>>({})
+
 
 // ===================== 世界级双栏穿梭定制抽屉 (Transfer Drawer) =====================
 const showTransferDrawer = ref(false)
@@ -83,6 +83,16 @@ const transferSearchRight = ref('')
 const isSavingLayout = ref(false)
 const drawerToast = ref<{ text: string; type: 'success' | 'error' } | null>(null)
 const isCustomizedByMe = ref(false)
+
+// 表格行内过滤与密度控制 (紧凑 compact | 标准 normal | 宽松 comfortable)
+const tableSearchQuery = ref('')
+const tableDensity = ref<'compact' | 'normal' | 'comfortable'>((localStorage.getItem('sap_b1_table_density') as any) || 'normal')
+
+const setTableDensity = (density: 'compact' | 'normal' | 'comfortable') => {
+  tableDensity.value = density
+  localStorage.setItem('sap_b1_table_density', density)
+}
+
 
 const showDrawerToast = (text: string, type: 'success' | 'error' = 'success') => {
   drawerToast.value = { text, type }
@@ -106,26 +116,36 @@ const docCurrency = computed(() => {
   return cur
 })
 
-const currencySymbol = computed(() => {
-  const cur = docCurrency.value
-  if (cur === 'USD') return '$'
-  if (cur === 'EUR') return '€'
-  if (cur === 'GBP') return '£'
-  if (cur === 'JPY') return '¥'
-  if (cur === 'RMB' || cur === 'CNY') return '¥'
-  return cur + ' '
+
+// 多币种与本币/外币金额智能提取与折算汇总
+const docAmountsSummary = computed(() => {
+  const data = parsedData.value || {}
+  const cur = (data.U_DocCur || data.DocCur || data.DocCurrency || 'RMB').toString().trim().toUpperCase()
+  const isForeign = cur !== 'RMB' && cur !== 'CNY'
+
+  // 本币金额 (DocTotal / U_DocTotal)
+  const localAmount = parseFloat(data.U_DocTotal ?? data.DocTotal ?? 0)
+  // 外币金额 (DocTotalFC / U_DocTotalFC)
+  const fcAmount = parseFloat(data.U_DocTotalFC ?? data.DocTotalFC ?? data.DocTotalFc ?? 0)
+  // 单据汇率 (DocRate / U_DocRate)
+  const rate = parseFloat(data.U_DocRate ?? data.DocRate ?? 0)
+
+  return {
+    cur,
+    isForeign,
+    localAmount: !isNaN(localAmount) ? localAmount : 0,
+    fcAmount: !isNaN(fcAmount) && fcAmount > 0 ? fcAmount : (isForeign ? localAmount : 0),
+    rate: !isNaN(rate) && rate > 0 ? rate : null
+  }
 })
 
-// 默认推荐固定在顶部概览卡片的核心高频字段
-const DEFAULT_PINNED_FIELDS = [
-  'U_DocDate', 'DocDate', 'U_DocDueDate', 'DocDueDate', 'Creator',
-  'U_DocCur', 'DocCur', 'U_SoType', 'U_SlpCode', 'U_GroupNum', 'U_saleass',
-  'U_DELIVER', 'U_PAGREQ', 'U_Comments', 'Comments'
-]
+const currencySymbol = computed(() => {
+  return getCurrencySymbol(docCurrency.value)
+})
 
 // 用户自定义固定在顶部概览区的字段 Key 数组 (持久化存储)
 const pinnedFieldKeys = ref<string[]>(
-  JSON.parse(localStorage.getItem(`sap_b1_pinned_${props.objectCode || 'CHORDR'}`) || JSON.stringify(DEFAULT_PINNED_FIELDS))
+  JSON.parse(localStorage.getItem(`sap_b1_pinned_${props.objectCode || 'CHORDR'}`) || JSON.stringify(defaultPinnedFields))
 )
 
 const isFieldPinned = (key: string) => {
@@ -144,19 +164,9 @@ const togglePinField = (key: string) => {
   syncLocalLayoutCache()
 }
 
-const resetPinnedFields = () => {
-  pinnedFieldKeys.value = [...DEFAULT_PINNED_FIELDS]
-  syncLocalLayoutCache()
-}
-
-// 默认推荐纳入多重备注与说明专属区的字段 Key
-const DEFAULT_MEMO_FIELDS = [
-  'Comments', 'U_Comments', 'U_Remark', 'U_PackMemo', 'U_DELIVER', 'U_PAGREQ', 'U_saleass'
-]
-
 // 用户自定义归集在备注专区的字段 Key 数组 (持久化存储)
 const memoFieldKeys = ref<string[]>(
-  JSON.parse(localStorage.getItem(`sap_b1_memo_${props.objectCode || 'CHORDR'}`) || JSON.stringify(DEFAULT_MEMO_FIELDS))
+  JSON.parse(localStorage.getItem(`sap_b1_memo_${props.objectCode || 'CHORDR'}`) || JSON.stringify(defaultMemoFields))
 )
 
 const isMemoZoneExpanded = ref(true)
@@ -414,9 +424,25 @@ const formatFieldValue = (key: string, val: any, childTableId?: string): { displ
     const childMap = metaData.value.childTableFields[childTableId]
     const stripped = key.startsWith('U_') ? key.substring(2) : key
     validMap = childMap?.[key]?.validValues || childMap?.[stripped]?.validValues || null
-  } else if (metaData.value?.headerFields) {
+  }
+  
+  if (!validMap && metaData.value?.headerFields) {
     const stripped = key.startsWith('U_') ? key.substring(2) : key
     validMap = metaData.value.headerFields?.[key]?.validValues || metaData.value.headerFields?.[stripped]?.validValues || null
+  }
+
+  if (!validMap && metaData.value?.childTableFields) {
+    const stripped = key.startsWith('U_') ? key.substring(2) : key
+    for (const cMap of Object.values(metaData.value.childTableFields) as any[]) {
+      if (cMap?.[key]?.validValues) {
+        validMap = cMap[key].validValues
+        break
+      }
+      if (cMap?.[stripped]?.validValues) {
+        validMap = cMap[stripped].validValues
+        break
+      }
+    }
   }
 
   const effMode = getFieldEffectiveDisplayMode(key)
@@ -709,8 +735,16 @@ const processedCollections = computed(() => {
         colLabels[cKey] = getFieldLabel(cKey, tableId)
       })
 
-      // 预计算全部行与单元格
-      const processedRows = v.map((row: any, rIdx: number) => {
+      // 预计算全部行与单元格 (支持快速搜索即时过滤)
+      let rawRows = v
+      if (tableSearchQuery.value.trim()) {
+        const q = tableSearchQuery.value.trim().toLowerCase()
+        rawRows = v.filter((row: any) => {
+          return Object.values(row).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(q))
+        })
+      }
+
+      const processedRows = rawRows.map((row: any, rIdx: number) => {
         const cells: Record<string, { display: string; isTranslated: boolean; isNum: boolean; isItemCode: boolean; isClosed: boolean }> = {}
         visibleCols.forEach(col => {
           const raw = row[col]
@@ -821,170 +855,47 @@ const headerUdfFields = computed(() => {
 })
 
 // 拖拽 Key 追踪
-const draggingColKey = ref<string | null>(null)
-const draggingTableKey = ref<string | null>(null)
-const draggingHeaderKey = ref<string | null>(null)
-const draggingPinnedKey = ref<string | null>(null)
-const isDragOverTopSummary = ref(false)
+
+
+
+
+
 
 // 表格表头直接拖拽排序控制
-const toggleTableReorderMode = (tableKey: string) => {
-  tableReorderModes.value[tableKey] = !tableReorderModes.value[tableKey]
-}
 
-const onDirectColDragStart = (tableKey: string, colKey: string, e: DragEvent) => {
-  if (!tableReorderModes.value[tableKey]) return
-  draggingColKey.value = colKey
-  draggingTableKey.value = tableKey
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'table-col', tableKey, colKey }))
-  }
-}
 
-const onDirectColDragOver = (tableKey: string, e: DragEvent) => {
-  if (!tableReorderModes.value[tableKey] || draggingTableKey.value !== tableKey) return
-  e.preventDefault()
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move'
-  }
-}
 
-const onDirectColDrop = (tableKey: string, targetColKey: string) => {
-  if (!tableReorderModes.value[tableKey] || !draggingColKey.value || draggingColKey.value === targetColKey) {
-    draggingColKey.value = null
-    draggingTableKey.value = null
-    return
-  }
 
-  const currentCols = collectionColOrders.value[tableKey] || processedCollections.value.find(c => c.key === tableKey)?.allColumns || []
-  const cols = [...currentCols]
-  const fromIdx = cols.indexOf(draggingColKey.value)
-  const toIdx = cols.indexOf(targetColKey)
 
-  if (fromIdx > -1 && toIdx > -1) {
-    cols.splice(fromIdx, 1)
-    cols.splice(toIdx, 0, draggingColKey.value)
-    collectionColOrders.value = {
-      ...collectionColOrders.value,
-      [tableKey]: cols
-    }
-    syncLocalLayoutCache()
-  }
 
-  draggingColKey.value = null
-  draggingTableKey.value = null
-}
 
-const onDirectColDragEnd = () => {
-  draggingColKey.value = null
-  draggingTableKey.value = null
-}
+
+
 
 // 主表属性卡片拖拽逻辑
-const onHeaderCardDragStart = (key: string, e: DragEvent) => {
-  if (!isHeaderReorderMode.value) return
-  draggingHeaderKey.value = key
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'header-field', key }))
-  }
-}
 
-const onHeaderCardDragOver = (e: DragEvent) => {
-  if (!isHeaderReorderMode.value || !draggingHeaderKey.value) return
-  e.preventDefault()
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move'
-  }
-}
 
-const onHeaderCardDrop = (targetKey: string) => {
-  if (!isHeaderReorderMode.value || !draggingHeaderKey.value || draggingHeaderKey.value === targetKey) {
-    draggingHeaderKey.value = null
-    return
-  }
 
-  const currentOrder = headerFieldOrder.value.length > 0
-    ? [...headerFieldOrder.value]
-    : allHeaderFieldsList.value.map(f => f.key)
 
-  const fromIdx = currentOrder.indexOf(draggingHeaderKey.value)
-  const toIdx = currentOrder.indexOf(targetKey)
 
-  if (fromIdx > -1 && toIdx > -1) {
-    currentOrder.splice(fromIdx, 1)
-    currentOrder.splice(toIdx, 0, draggingHeaderKey.value)
-    headerFieldOrder.value = currentOrder
-    syncLocalLayoutCache()
-  }
 
-  draggingHeaderKey.value = null
-}
 
-const onHeaderCardDragEnd = () => {
-  draggingHeaderKey.value = null
-}
 
 // 顶部概览拖拽置顶逻辑
-const onTopSummaryDragOver = (e: DragEvent) => {
-  if (!isHeaderReorderMode.value) return
-  e.preventDefault()
-  isDragOverTopSummary.value = true
-}
 
-const onTopSummaryDragLeave = () => {
-  isDragOverTopSummary.value = false
-}
 
-const onTopSummaryDrop = (_e: DragEvent) => {
-  isDragOverTopSummary.value = false
-  if (!isHeaderReorderMode.value || !draggingHeaderKey.value) return
-  const key = draggingHeaderKey.value
-  if (!isFieldPinned(key)) {
-    togglePinField(key)
-  }
-  draggingHeaderKey.value = null
-}
+
+
+
 
 // 顶部置顶标签上下/左右拖拽调序
-const onPinnedDragStart = (key: string, e: DragEvent) => {
-  if (!isHeaderReorderMode.value) return
-  draggingPinnedKey.value = key
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'pinned-tag', key }))
-  }
-}
 
-const onPinnedDragOver = (e: DragEvent) => {
-  if (!isHeaderReorderMode.value || !draggingPinnedKey.value) return
-  e.preventDefault()
-}
 
-const onPinnedDrop = (targetKey: string) => {
-  if (!isHeaderReorderMode.value || !draggingPinnedKey.value || draggingPinnedKey.value === targetKey) {
-    draggingPinnedKey.value = null
-    return
-  }
 
-  const list = [...pinnedFieldKeys.value]
-  const fromIdx = list.indexOf(draggingPinnedKey.value)
-  const toIdx = list.indexOf(targetKey)
 
-  if (fromIdx > -1 && toIdx > -1) {
-    list.splice(fromIdx, 1)
-    list.splice(toIdx, 0, draggingPinnedKey.value)
-    pinnedFieldKeys.value = list
-    syncLocalLayoutCache()
-  }
 
-  draggingPinnedKey.value = null
-}
 
-const onPinnedDragEnd = () => {
-  draggingPinnedKey.value = null
-}
+
 
 // ===================== 服务器分层配置保存与重置 =====================
 const getLayoutPayloadJson = () => {
@@ -1040,6 +951,9 @@ const saveGlobalDefaultLayoutToServer = async () => {
   }
 }
 
+const resetAllLayoutToFactoryDefault = async () => {
+  await resetToCompanyDefaultLayout()
+}
 const resetToCompanyDefaultLayout = async () => {
   const obj = props.objectCode || parsedData.value?.Object || 'CHORDR'
   isSavingLayout.value = true
@@ -1302,6 +1216,47 @@ const onDrawerDragEnd = () => {
   draggingDrawerKey.value = null
 }
 
+
+// 判断字段是否属于已识别的 Code-Name 字典关联字段 (仅针对带有 validValues、RTable 关联表或 Y/N 枚举的字段提供模式切换)
+const isCodeNameField = (key: string, tableKey?: string): boolean => {
+  if (key === 'U_Close' || key === 'LineCls') return true
+  const stripped = key.startsWith('U_') ? key.substring(2) : key
+
+  if (tableKey && metaData.value?.childTableFields?.[tableKey]) {
+    const childMap = metaData.value.childTableFields[tableKey]
+    if (childMap[key]?.validValues && Object.keys(childMap[key].validValues).length > 0) return true
+    if (childMap[stripped]?.validValues && Object.keys(childMap[stripped].validValues).length > 0) return true
+  }
+
+  if (metaData.value?.headerFields) {
+    if (metaData.value.headerFields[key]?.validValues && Object.keys(metaData.value.headerFields[key].validValues).length > 0) return true
+    if (metaData.value.headerFields[stripped]?.validValues && Object.keys(metaData.value.headerFields[stripped].validValues).length > 0) return true
+  }
+
+  if (metaData.value?.childTableFields) {
+    for (const cMap of Object.values(metaData.value.childTableFields) as any[]) {
+      if (cMap?.[key]?.validValues && Object.keys(cMap[key].validValues).length > 0) return true
+      if (cMap?.[stripped]?.validValues && Object.keys(cMap[stripped].validValues).length > 0) return true
+    }
+  }
+
+  return false
+}
+
+
+// 统一打开字段与列定制抽屉 (根据当前所处视图智能直达对应定制 Tab)
+const openUnifiedCustomizationDrawer = () => {
+  if (activeDocTab.value === 'tab_header' || activeDocTab.value === 'tab_json') {
+    openTransferDrawer('header')
+  } else if (activeDocTab.value.startsWith('tab_table_')) {
+    const idx = parseInt(activeDocTab.value.replace('tab_table_', ''))
+    const coll = processedCollections.value[idx]
+    openTransferDrawer(coll?.key || 'header')
+  } else {
+    openTransferDrawer('header')
+  }
+}
+
 const openTransferDrawer = (tabKey: string = 'header') => {
   activeTransferTab.value = tabKey
   transferSearchLeft.value = ''
@@ -1312,487 +1267,415 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 
 <template>
   <div class="doc-viewer-container">
-    <!-- 1. 顶部 Hero 看板 (常驻醒目总览) -->
-    <div
-      class="summary-card"
-      :class="[
-        isHeaderReorderMode ? 'summary-card-reorder' : '',
-        isDragOverTopSummary ? 'summary-card-drag-over' : ''
-      ]"
-      @dragover="onTopSummaryDragOver"
-      @dragleave="onTopSummaryDragLeave"
-      @drop="onTopSummaryDrop"
-    >
-      
-      <!-- 财务/库存过账草稿与借贷平衡专属状态指示条 -->
+    <!-- 1. 发票级紧凑 Hero 抬头凭证栏 (高度仅 ~75px，核心要素一眼尽览) -->
+    <div class="summary-hero-card">
+      <!-- 财务/库存过账草稿与借贷平衡微型胶囊 -->
       <div v-if="isDraftDocument || journalBalanceInfo" class="doc-special-status-bar">
         <div v-if="isDraftDocument" class="draft-badge-pill">
           <span class="draft-dot"></span>
-          <span>📋 财务/库存过账草稿 (审批通过后将由后台 Worker 自动调用 Service Layer 过账至 SAP)</span>
+          <span>📋 财务/库存过账草稿 (审批通过后自动过账至 SAP)</span>
         </div>
 
         <div v-if="journalBalanceInfo" class="journal-balance-pill" :class="[journalBalanceInfo.isBalanced ? 'balanced' : 'unbalanced']">
           <span v-if="journalBalanceInfo.isBalanced">⚖️ 凭证借贷平衡：借贷总额 {{ currencySymbol }} {{ journalBalanceInfo.totalDebit.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) }}</span>
-          <span v-else>⚠️ 借贷不平衡！借方 {{ currencySymbol }} {{ journalBalanceInfo.totalDebit }} ≠ 贷方 {{ currencySymbol }} {{ journalBalanceInfo.totalCredit }} (差额: {{ journalBalanceInfo.diff }})</span>
+          <span v-else>⚠️ 借贷不平衡！借方 {{ currencySymbol }} {{ journalBalanceInfo.totalDebit }} ≠ 贷方 {{ currencySymbol }} {{ journalBalanceInfo.totalCredit }}</span>
         </div>
       </div>
 
-      <div class="summary-left">
-        <!-- 客户名称 -->
-        <div class="summary-item">
-          <span class="s-label">客户 / 业务伙伴</span>
-          <div class="s-val-highlight">
-            <Building2 class="w-4 h-4 text-blue-500 mr-1.5" />
-            <strong v-if="fieldDisplayMode === 'CodeOnly'">{{ parsedData.U_CardCode || parsedData.CardCode || '-' }}</strong>
-            <strong v-else>{{ parsedData.U_CardName || parsedData.CardName || '-' }}</strong>
-            <span v-if="fieldDisplayMode === 'NameAndCode' && (parsedData.U_CardCode || parsedData.CardCode)" class="sub-code">
-              ({{ parsedData.U_CardCode || parsedData.CardCode }})
-            </span>
+      <div class="hero-main-row">
+        <!-- 左侧：客户名称与核心置顶要素 -->
+        <div class="hero-left-section">
+          <div class="customer-title-row">
+            <Building2 class="w-4 h-4 text-blue-600 mr-2 shrink-0" />
+            <h3 class="customer-name" :title="parsedData.U_CardCode || parsedData.CardCode">
+              <span v-if="fieldDisplayMode === 'CodeOnly'">{{ parsedData.U_CardCode || parsedData.CardCode || '未指定客户' }}</span>
+              <span v-else>{{ parsedData.U_CardName || parsedData.CardName || parsedData.U_CardCode || '未指定客户' }}</span>
+              <span v-if="fieldDisplayMode === 'NameAndCode' && (parsedData.U_CardCode || parsedData.CardCode)" class="customer-code-pill">
+                {{ parsedData.U_CardCode || parsedData.CardCode }}
+              </span>
+            </h3>
           </div>
-        </div>
 
-        <!-- 动态固定在顶部的核心字段网格 -->
-        <div class="summary-grid">
-          <div
-            v-for="pf in topPinnedFields"
-            :key="pf.key"
-            class="summary-sub-item pinned-tag"
-            :class="[
-              isHeaderReorderMode ? 'pinned-tag-draggable' : '',
-              draggingPinnedKey === pf.key ? 'dragging-source' : ''
-            ]"
-            :draggable="isHeaderReorderMode"
-            @dragstart="onPinnedDragStart(pf.key, $event)"
-            @dragover="onPinnedDragOver"
-            @drop.stop="onPinnedDrop(pf.key)"
-            @dragend="onPinnedDragEnd"
-          >
-            <GripVertical v-if="isHeaderReorderMode" class="w-3 h-3 text-slate-400 cursor-move mr-0.5" />
-            <span class="sub-label">{{ pf.label }}:</span>
-            <span
-              v-if="pf.formatted.isTranslated"
-              class="sub-val badge-trans"
+          <!-- 极简中性胶囊标签流 (过账日期、业务员、到期日、运费承担等) -->
+          <div class="hero-tags-flow">
+            <div
+              v-for="pf in topPinnedFields"
+              :key="pf.key"
+              class="hero-meta-pill"
             >
-              {{ pf.formatted.display }}
-            </span>
-            <span v-else class="sub-val font-semibold">
-              {{ pf.formatted.display }}
-            </span>
-
-            <button
-              v-if="isHeaderReorderMode"
-              class="btn-unpin"
-              @click.stop="togglePinField(pf.key)"
-              title="取消置顶"
-            >
-              <X class="w-3 h-3 text-slate-400 hover:text-rose-600" />
-            </button>
-          </div>
-
-          <div v-if="isHeaderReorderMode" class="drop-zone-placeholder">
-            <Plus class="w-3.5 h-3.5 text-blue-600" />
-            <span>拖拽下方卡片至此处即可固定到顶部</span>
+              <span class="meta-pill-label">{{ pf.label }}:</span>
+              <span class="meta-pill-val" :class="[pf.formatted.isTranslated ? 'text-emerald-700 font-semibold' : '']">
+                {{ pf.formatted.display }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <!-- 单据备注 -->
-        <div v-if="parsedData.U_Comments || parsedData.Comments" class="summary-comment">
-          <FileText class="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span><strong>单据备注：</strong>{{ parsedData.U_Comments || parsedData.Comments }}</span>
-        </div>
-      </div>
+        <!-- 右侧：发票级大字总金额与外币/本币双轨看板 -->
+        <div class="hero-right-section">
+          <div class="amount-label-row">
+            <span class="text-xs text-slate-500 font-medium">
+              单据总金额
+              <span v-if="docAmountsSummary.isForeign" class="font-bold text-blue-700">({{ docAmountsSummary.cur }})</span>
+              <span v-else>(本币 RMB)</span>
+            </span>
+            <span v-if="parsedData.DocNum || parsedData.DocEntry" class="doc-num-badge font-mono">
+              #{{ parsedData.DocNum || parsedData.DocEntry }}
+            </span>
+          </div>
 
-      <!-- 单据金额与单号 -->
-      <div class="summary-right">
-        <span class="s-label">单据总金额 ({{ docCurrency }})</span>
-        <div class="total-amount">
-          {{ formatFieldValue('DocTotal', parsedData.U_DocTotal ?? parsedData.DocTotal ?? 0).display }}
+          <!-- 主金额大字 (外币单据显示外币符号，如 $ 600.00 USD；本币显示 ¥ 4,217.40) -->
+          <div class="hero-total-amount">
+            <span v-if="docAmountsSummary.isForeign">
+              {{ currencySymbol }} {{ docAmountsSummary.fcAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) }}
+            </span>
+            <span v-else>
+              ¥ {{ docAmountsSummary.localAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) }}
+            </span>
+          </div>
+
+          <!-- 外币单据时：自动展示本币金额与当前汇率 -->
+          <div v-if="docAmountsSummary.isForeign" class="foreign-convert-sub">
+            <span>本币: <strong>¥ {{ docAmountsSummary.localAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) }}</strong></span>
+            <span v-if="docAmountsSummary.rate" class="sub-rate-tag">(汇率 {{ docAmountsSummary.rate }})</span>
+          </div>
         </div>
-        <div v-if="parsedData.DocNum || parsedData.DocEntry" class="docnum-tag">
-          单号: {{ parsedData.DocNum || parsedData.DocEntry }}
-        </div>
-        <button
-          v-if="isHeaderReorderMode"
-          class="btn-reset-pinned mt-2"
-          @click="resetPinnedFields"
-          title="恢复默认顶部字段"
-        >
-          <RotateCcw class="w-3 h-3 mr-1" />
-          <span>恢复默认看板</span>
-        </button>
       </div>
     </div>
 
-
-    <!-- 1.5 世界级多重备注与说明专属展示区 (支持自适应多行、单据特别条款、一键收起/展开与个性化归集) -->
-    <div v-if="processedMemoFields.length > 0" class="memo-zone-container">
-      <div class="memo-zone-header" @click="toggleMemoZone">
-        <div class="memo-zone-title">
-          <FileText class="w-4 h-4 text-amber-600 mr-2" />
-          <span class="font-bold text-slate-800">单据多重备注与说明专区</span>
-          <span class="memo-count-tag">{{ processedMemoFields.length }} 项已归集备注</span>
+    <!-- 2. 多重备注与说明专属收敛便签栏 (默认紧凑单行，消除黄色刺眼色块，支持平滑展开) -->
+    <div v-if="processedMemoFields.length > 0" class="memo-bar-wrapper">
+      <div class="memo-bar-header" @click="toggleMemoZone">
+        <div class="memo-bar-left">
+          <FileText class="w-4 h-4 text-amber-600 mr-2 shrink-0" />
+          <span class="font-bold text-slate-800 text-xs mr-2">单据备注与特别说明 ({{ processedMemoFields.length }} 项)</span>
+          <!-- 默认展示首条核心备注摘要 -->
+          <span class="memo-preview-text">
+            <strong>{{ processedMemoFields[0].label }}:</strong> {{ processedMemoFields[0].value }}
+          </span>
         </div>
 
-        <div class="memo-zone-actions" @click.stop>
-          <button class="btn-memo-customize" @click="openTransferDrawer('memo')" title="自定义归集哪些字段到备注专区">
-            <Settings2 class="w-3.5 h-3.5 mr-1 text-blue-600" />
-            <span>配置备注归集字段</span>
-          </button>
-          <button class="btn-memo-toggle" @click="toggleMemoZone">
-            <span>{{ isMemoZoneExpanded ? '收起备注' : '展开备注' }}</span>
+        <div class="memo-bar-actions" @click.stop>
+          <button class="btn-memo-toggle-flat" @click="toggleMemoZone">
+            <span>{{ isMemoZoneExpanded ? '收起明细 ▲' : '展开全部 ▼' }}</span>
           </button>
         </div>
       </div>
 
-      <div v-show="isMemoZoneExpanded" class="memo-cards-grid">
+      <!-- 展开时的多重备注网格卡片 -->
+      <div v-show="isMemoZoneExpanded" class="memo-expanded-grid">
         <div
           v-for="mf in processedMemoFields"
           :key="mf.key"
-          class="memo-card-item"
+          class="memo-expanded-card"
         >
-          <div class="memo-card-header">
-            <span class="memo-card-label">{{ mf.label }}</span>
-            <span class="memo-card-key font-mono">{{ mf.key }}</span>
+          <div class="memo-card-top">
+            <span class="memo-card-name">{{ mf.label }}</span>
+            <span class="memo-card-field font-mono">{{ mf.key }}</span>
           </div>
-          <div class="memo-card-body">
+          <div class="memo-card-content">
             {{ mf.value }}
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 2. 世界级 Tab 容器化导航栏 (Segmented Views) -->
-    <div class="doc-tab-bar">
-      <!-- 各子表 Tab -->
-      <button
-        v-for="(c, cIdx) in processedCollections"
-        :key="c.key"
-        :class="['doc-tab-btn', activeDocTab === ('tab_table_' + cIdx) ? 'active' : '']"
-        @click="activeDocTab = 'tab_table_' + cIdx"
-      >
-        <Layers class="w-3.5 h-3.5 mr-1" />
-        <span>{{ c.label }}</span>
-        <span class="tab-count-badge">{{ c.processedRows.length }} 行</span>
-      </button>
-
-      <!-- 主表业务属性 Tab -->
-      <button
-        :class="['doc-tab-btn', activeDocTab === 'tab_header' ? 'active' : '']"
-        @click="activeDocTab = 'tab_header'"
-      >
-        <Tag class="w-3.5 h-3.5 mr-1" />
-        <span>主表全部属性</span>
-        <span class="tab-count-badge">{{ headerUdfFields.length }} 项</span>
-      </button>
-
-      <!-- 原始 JSON 快照 Tab -->
-      <button
-        :class="['doc-tab-btn', activeDocTab === 'tab_json' ? 'active' : '']"
-        @click="activeDocTab = 'tab_json'"
-      >
-        <Code2 class="w-3.5 h-3.5 mr-1" />
-        <span>原始签名快照 (JSON)</span>
-      </button>
-    </div>
-
-    <!-- 3. Tab 主体内容区 (按需渲染单个视窗，零重排零开销) -->
-    <div class="doc-tab-content">
-      <!-- 渲染选中的子表格 -->
-      <template v-for="(c, cIdx) in processedCollections" :key="c.key">
-        <div v-if="activeDocTab === ('tab_table_' + cIdx)" class="collection-block">
-          <div class="collection-header">
-            <div class="c-title">
-              <Layers class="w-4 h-4 text-purple-600" />
-              <h4>{{ c.label }}</h4>
-              <span class="text-xs text-slate-400 font-mono">({{ c.tableId }})</span>
-            </div>
-            
-            <div class="c-actions">
-              <span class="badge badge-info mr-2">{{ c.processedRows.length }} 行明细记录</span>
-
-              <button
-                :class="['btn-reorder-toggle', tableReorderModes[c.key] ? 'active-reorder' : '']"
-                @click="toggleTableReorderMode(c.key)"
-                :title="tableReorderModes[c.key] ? '点击锁定并保存列顺序' : '点击开启直接在表格中拖拽列头排序模式'"
-              >
-                <component :is="tableReorderModes[c.key] ? Lock : Unlock" class="w-3.5 h-3.5" />
-                <span>{{ tableReorderModes[c.key] ? '完成并锁定列顺序' : '开启表头拖拽调序' }}</span>
-              </button>
-
-              <button
-                class="btn-col-config"
-                @click="openTransferDrawer(c.key)"
-                title="设置本表格的显示列与顺序"
-              >
-                <SlidersHorizontal class="w-3.5 h-3.5 text-purple-600" />
-                <span>列定制</span>
-              </button>
-            </div>
-          </div>
-
-          <div v-if="tableReorderModes[c.key]" class="drag-active-banner">
-            <Move class="w-4 h-4 text-purple-700 animate-pulse shrink-0" />
-            <span>
-              <strong>已开启表头拖拽模式：</strong> 请直接用鼠标按住下方<strong>任意列头左右拖拽</strong>调整顺序，完毕后点击右上角【完成并锁定列顺序】。
-            </span>
-          </div>
-
-          <div class="table-responsive">
-            <table class="data-table" :class="[tableReorderModes[c.key] ? 'table-reordering' : '']">
-              <thead>
-                <tr>
-                  <th
-                    v-for="col in c.visibleColumns"
-                    :key="col"
-                    :title="tableReorderModes[c.key] ? '按住拖拽移动此列' : col"
-                    :draggable="!!tableReorderModes[c.key]"
-                    @dragstart="onDirectColDragStart(c.key, col, $event)"
-                    @dragover="onDirectColDragOver(c.key, $event)"
-                    @drop="onDirectColDrop(c.key, col)"
-                    @dragend="onDirectColDragEnd"
-                    :class="[
-                      tableReorderModes[c.key] ? 'draggable-th-active' : 'draggable-th-idle',
-                      draggingColKey === col && draggingTableKey === c.key ? 'dragging-source' : ''
-                    ]"
-                  >
-                    <div class="th-content">
-                      <GripVertical
-                        v-if="tableReorderModes[c.key]"
-                        class="w-3.5 h-3.5 text-purple-600 cursor-move mr-1.5 shrink-0"
-                      />
-                      <span>{{ c.columnLabels[col] || col }}</span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in c.processedRows" :key="r.rIdx">
-                  <td
-                    v-for="col in c.visibleColumns"
-                    :key="col"
-                    :class="[
-                      r.cells[col]?.isNum ? 'align-right' : '',
-                      r.cells[col]?.isItemCode ? 'font-mono font-bold text-blue-600' : '',
-                      r.cells[col]?.isClosed ? 'bg-amber-50 text-amber-800 font-bold' : ''
-                    ]"
-                  >
-                    <span
-                      v-if="r.cells[col]?.isTranslated"
-                      class="text-emerald-700 font-semibold"
-                    >
-                      {{ r.cells[col]?.display }}
-                    </span>
-                    <span v-else>
-                      {{ r.cells[col]?.display }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </template>
-
-      <!-- 渲染主表属性 Tab -->
-      <div v-if="activeDocTab === 'tab_header'" class="ext-fields-block">
-        <div class="ext-header">
-          <div class="ext-title">
-            <Tag class="w-3.5 h-3.5 text-blue-600" />
-            <h5>主表业务字段与自定义属性 (当前显示: {{ headerUdfFields.length }} 项)</h5>
-          </div>
-
-          <div class="ext-actions">
-            <button
-              :class="['btn-filter', isHeaderReorderMode ? 'active' : '']"
-              @click="isHeaderReorderMode = !isHeaderReorderMode"
-              :title="isHeaderReorderMode ? '点击锁定并保存字段顺序与置顶设置' : '点击开启在页面上直接拖拽字段至顶部看板或调序'"
-            >
-              <component :is="isHeaderReorderMode ? Lock : Move" class="w-3 h-3" />
-              <span>{{ isHeaderReorderMode ? '完成并锁定布局' : '页面拖拽与置顶' }}</span>
-            </button>
-
-            <button
-              :class="['btn-filter', showSystemFields ? 'active' : '']"
-              @click="showSystemFields = !showSystemFields"
-              :title="showSystemFields ? '点击隐藏底层技术字段' : '点击展开全部底层技术元数据'"
-            >
-              <component :is="showSystemFields ? EyeOff : Eye" class="w-3 h-3" />
-              <span>{{ showSystemFields ? '隐藏技术字段' : '显示底层技术字段' }}</span>
-            </button>
-
-            <button class="btn-filter" @click="openTransferDrawer('header')" title="打开双栏穿梭定制抽屉">
-              <SlidersHorizontal class="w-3 h-3 text-slate-600" />
-              <span>字段定制 (双栏穿梭)</span>
-            </button>
-
-            <div class="search-box">
-              <Search class="w-3 h-3 text-slate-400" />
-              <input v-model="searchUdf" placeholder="搜索字段名/描述/取值..." class="search-input" />
-            </div>
-          </div>
-        </div>
-
-        <div class="fields-grid" :class="[isHeaderReorderMode ? 'grid-reordering' : '']">
-          <div
-            v-for="f in headerUdfFields"
-            :key="f.key"
-            class="field-cell"
-            :class="[
-              isHeaderReorderMode ? 'field-cell-draggable' : '',
-              isFieldPinned(f.key) ? 'field-cell-pinned' : '',
-              draggingHeaderKey === f.key ? 'dragging-source' : ''
-            ]"
-            :draggable="isHeaderReorderMode"
-            @dragstart="onHeaderCardDragStart(f.key, $event)"
-            @dragover="onHeaderCardDragOver"
-            @drop="onHeaderCardDrop(f.key)"
-            @dragend="onHeaderCardDragEnd"
-          >
-            <div class="f-label-row">
-              <div class="f-label-left">
-                <GripVertical v-if="isHeaderReorderMode" class="w-3.5 h-3.5 text-blue-500 cursor-move mr-1 shrink-0" />
-                <span class="f-label" :title="f.key">{{ f.label }}</span>
-              </div>
-              
-              <div class="f-label-right">
-                <span v-if="f.key !== f.label" class="f-key-code">{{ f.key }}</span>
-                <button
-                  class="btn-pin-toggle"
-                  :class="[isFieldPinned(f.key) ? 'pinned' : '']"
-                  @click.stop="togglePinField(f.key)"
-                  :title="isFieldPinned(f.key) ? '已置顶在顶部概览卡片' : '点击置顶固定到顶部概览卡片'"
-                >
-                  <component :is="isFieldPinned(f.key) ? Pin : PinOff" class="w-3 h-3" />
-                </button>
-                <button
-                  class="btn-pin-toggle"
-                  :class="[isFieldInMemo(f.key) ? 'in-memo' : '']"
-                  @click.stop="toggleMemoField(f.key)"
-                  :title="isFieldInMemo(f.key) ? '已归入多重备注专区' : '点击归入多重备注专区'"
-                >
-                  <FileText class="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-            <div class="f-val-wrap">
-              <span v-if="f.formatted.isTranslated" class="f-val text-emerald-700 font-semibold">
-                {{ f.formatted.display }}
-              </span>
-              <span v-else class="f-val">
-                {{ f.formatted.display }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 渲染原始 JSON 快照 Tab -->
-      <div v-if="activeDocTab === 'tab_json'" class="json-preview-container">
-        <pre class="json-preview">{{ JSON.stringify(parsedData, null, 2) }}</pre>
-      </div>
-    </div>
-
-    <!-- 4. 世界级双栏穿梭定制抽屉 (Two-Column Transfer Drawer) -->
-    <div v-if="showTransferDrawer" class="drawer-backdrop" @click.self="showTransferDrawer = false">
-      <div class="drawer-panel">
-        <div class="drawer-header">
-          <div class="drawer-title-wrap">
-            <div class="drawer-title">
-              <Settings2 class="w-5 h-5 text-blue-600 mr-2" />
-              <span>单据字段与列个性化定制中心</span>
-            </div>
-            <div class="drawer-subtitle">
-              <span>当前对象：<strong>{{ objectCode || 'CHORDR' }}</strong></span>
-              <span v-if="isCustomizedByMe" class="badge-user-pref">已启用个人专属偏好</span>
-              <span v-else class="badge-global-pref">继承全公司默认配置</span>
-            </div>
-          </div>
-
-          <button class="btn-close-drawer" @click="showTransferDrawer = false">
-            <X class="w-5 h-5" />
-          </button>
-        </div>
-
-        <div class="drawer-tabs">
+    <!-- 3. 世界级明细表格一体化容器 (Tab 导航 + 行内搜索 + 密度调节 + 列定制) -->
+    <div class="table-unified-card">
+      <div class="table-toolbar-row">
+        <!-- Tab 切换 -->
+        <div class="table-tabs-group">
           <button
-            :class="['drawer-tab', activeTransferTab === 'header' ? 'active' : '']"
-            @click="activeTransferTab = 'header'"
-          >
-            <Tag class="w-4 h-4 mr-1.5" />
-            <span>主表业务属性 ({{ allHeaderFieldsList.length }} 项)</span>
-          </button>
-          <button
-            v-for="c in processedCollections"
+            v-for="(c, cIdx) in processedCollections"
             :key="c.key"
-            :class="['drawer-tab', activeTransferTab === c.key ? 'active' : '']"
-            @click="activeTransferTab = c.key"
+            :class="['table-tab-item', activeDocTab === ('tab_table_' + cIdx) ? 'active' : '']"
+            @click="activeDocTab = 'tab_table_' + cIdx"
           >
-            <Layers class="w-4 h-4 mr-1.5" />
-            <span>{{ c.label }} ({{ c.allColumns.length }} 列)</span>
+            <Layers class="w-3.5 h-3.5 mr-1.5" />
+            <span>{{ c.label }}</span>
+            <span class="tab-badge-count">{{ c.processedRows.length }}</span>
           </button>
+
           <button
-            :class="['drawer-tab', activeTransferTab === 'memo' ? 'active' : '']"
-            @click="activeTransferTab = 'memo'"
+            :class="['table-tab-item', activeDocTab === 'tab_header' ? 'active' : '']"
+            @click="activeDocTab = 'tab_header'"
           >
-            <FileText class="w-4 h-4 mr-1.5 text-amber-600" />
-            <span>备注专区字段归集 ({{ memoFieldKeys.length }} 项)</span>
+            <Tag class="w-3.5 h-3.5 mr-1.5" />
+            <span>对象主表属性</span>
+            <span class="tab-badge-count">{{ headerUdfFields.length }}</span>
+          </button>
+
+          <button
+            :class="['table-tab-item', activeDocTab === 'tab_json' ? 'active' : '']"
+            @click="activeDocTab = 'tab_json'"
+          >
+            <Code2 class="w-3.5 h-3.5 mr-1.5" />
+            <span>原始快照 (JSON)</span>
           </button>
         </div>
 
-        <!-- 世界级代码与描述呈现模式选择器 -->
-        <div class="drawer-mode-section">
-          <div class="mode-section-header">
-            <SlidersHorizontal class="w-3.5 h-3.5 text-blue-600 mr-1.5" />
-            <span class="font-semibold text-slate-700">关联字典与代码呈现样式：</span>
+        <!-- 表格右上角高效工具箱 (过滤、密度、列定制) -->
+        <div class="table-tools-group">
+          <!-- 实时行搜索 -->
+          <div v-if="activeDocTab.startsWith('tab_table_')" class="table-search-box">
+            <Search class="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
+            <input
+              v-model="tableSearchQuery"
+              placeholder="搜索物料/颜色/规格..."
+              class="table-search-input"
+            />
+            <button v-if="tableSearchQuery" class="btn-clear-search" @click="tableSearchQuery = ''">
+              <X class="w-3 h-3 text-slate-400" />
+            </button>
           </div>
 
-          <div class="mode-cards-grid">
-            <div
-              class="mode-card"
-              :class="[fieldDisplayMode === 'NameAndCode' ? 'active' : '']"
-              @click="setDisplayMode('NameAndCode')"
+          <!-- 密度切换器 -->
+          <div v-if="activeDocTab.startsWith('tab_table_')" class="density-switch-group">
+            <button
+              :class="['density-btn', tableDensity === 'compact' ? 'active' : '']"
+              @click="setTableDensity('compact')"
+              title="紧凑模式 (高密浏览)"
             >
-              <div class="mode-card-header">
-                <span class="mode-name font-bold">描述与代码 Name (Code)</span>
-                <span class="mode-tag badge-default">默认推荐</span>
-              </div>
-              <div class="mode-example">
-                例：<code>成品订单 (107)</code>、<code>月结 (18)</code>、<code>否 (N)</code>
-              </div>
-            </div>
+              紧凑
+            </button>
+            <button
+              :class="['density-btn', tableDensity === 'normal' ? 'active' : '']"
+              @click="setTableDensity('normal')"
+              title="标准模式"
+            >
+              标准
+            </button>
+            <button
+              :class="['density-btn', tableDensity === 'comfortable' ? 'active' : '']"
+              @click="setTableDensity('comfortable')"
+              title="舒适模式"
+            >
+              宽松
+            </button>
+          </div>
 
-            <div
-              class="mode-card"
-              :class="[fieldDisplayMode === 'NameOnly' ? 'active' : '']"
-              @click="setDisplayMode('NameOnly')"
-            >
-              <div class="mode-card-header">
-                <span class="mode-name font-bold">仅显示描述 Name</span>
-                <span class="mode-tag badge-clean">极简清爽</span>
-              </div>
-              <div class="mode-example">
-                例：<code>成品订单</code>、<code>月结</code>、<code>否</code>
-              </div>
-            </div>
+          <!-- 字段与列定制唯一统一全局入口 (可配置主表、行表、备注归集与呈现模式) -->
+          <button
+            class="btn-col-customize-pill"
+            @click="openUnifiedCustomizationDrawer"
+            title="统一配置对象主表属性、子表明细列、备注归集与关联字典显示模式"
+          >
+            <SlidersHorizontal class="w-3.5 h-3.5 text-blue-600 mr-1.5" />
+            <span>字段与列定制</span>
+          </button>
+        </div>
+      </div>
 
+      <!-- 表格内容主体 (Sticky 表头 + 虚拟沉浸式滚动) -->
+      <div class="table-viewport-wrapper">
+        <template v-for="(c, cIdx) in processedCollections" :key="c.key">
+          <div v-if="activeDocTab === ('tab_table_' + cIdx)" class="collection-table-box">
+            <div class="table-scroll-container">
+              <table class="modern-grid-table" :class="['density-' + tableDensity]">
+                <thead>
+                  <tr>
+                    <th class="th-seq-col">#</th>
+                    <th
+                      v-for="col in c.visibleColumns"
+                      :key="col"
+                      :title="col"
+                    >
+                      <div class="th-label-wrap">
+                        <span>{{ c.columnLabels[col] || col }}</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(r, rowIdx) in c.processedRows" :key="r.rIdx" class="grid-row">
+                    <td class="td-seq-col font-mono">{{ rowIdx + 1 }}</td>
+                    <td
+                      v-for="col in c.visibleColumns"
+                      :key="col"
+                      :class="[
+                        r.cells[col]?.isNum ? 'align-right font-mono' : '',
+                        r.cells[col]?.isItemCode ? 'font-mono font-bold text-blue-700' : '',
+                        r.cells[col]?.isClosed ? 'status-cell-closed' : ''
+                      ]"
+                    >
+                      <span
+                        v-if="r.cells[col]?.isTranslated"
+                        class="cell-translated-badge"
+                      >
+                        {{ r.cells[col]?.display }}
+                      </span>
+                      <span v-else>
+                        {{ r.cells[col]?.display }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="c.processedRows.length === 0" class="empty-table-row">
+                    <td :colspan="c.visibleColumns.length + 1" class="text-center py-8 text-slate-400">
+                      未匹配到任何明细行数据
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+
+        <!-- 对象主表属性网格 -->
+        <div v-if="activeDocTab === 'tab_header'" class="header-fields-wrapper">
+          <div class="header-fields-filter-bar">
+            <Search class="w-3.5 h-3.5 text-slate-400 mr-2" />
+            <input
+              v-model="searchUdf"
+              placeholder="搜索对象主表属性名 / 描述 / 取值..."
+              class="header-search-input"
+            />
+            
+          </div>
+
+          <div class="modern-fields-grid">
             <div
-              class="mode-card"
-              :class="[fieldDisplayMode === 'CodeOnly' ? 'active' : '']"
-              @click="setDisplayMode('CodeOnly')"
+              v-for="f in headerUdfFields"
+              :key="f.key"
+              class="modern-field-card"
+              :class="[isFieldPinned(f.key) ? 'pinned' : '']"
             >
-              <div class="mode-card-header">
-                <span class="mode-name font-bold">仅显示代码 Code</span>
-                <span class="mode-tag badge-compact">高密代码</span>
+              <div class="card-top-line">
+                <span class="field-title" :title="f.key">{{ f.label }}</span>
+                <span v-if="f.key !== f.label" class="field-key-code font-mono">{{ f.key }}</span>
+                <div class="card-mini-actions">
+                  <button
+                    class="btn-icon-action"
+                    :class="[isFieldPinned(f.key) ? 'active' : '']"
+                    @click="togglePinField(f.key)"
+                    :title="isFieldPinned(f.key) ? '取消置顶' : '置顶固定到顶部看板'"
+                  >
+                    <component :is="isFieldPinned(f.key) ? Pin : PinOff" class="w-3 h-3" />
+                  </button>
+                  <button
+                    class="btn-icon-action"
+                    :class="[isFieldInMemo(f.key) ? 'active-memo' : '']"
+                    @click="toggleMemoField(f.key)"
+                    :title="isFieldInMemo(f.key) ? '从备注区移出' : '归入多重备注区'"
+                  >
+                    <FileText class="w-3 h-3" />
+                  </button>
+                </div>
               </div>
-              <div class="mode-example">
-                例：<code>107</code>、<code>18</code>、<code>N</code>
+              <div class="card-value-box">
+                <span v-if="f.formatted.isTranslated" class="val-translated">
+                  {{ f.formatted.display }}
+                </span>
+                <span v-else class="val-normal">
+                  {{ f.formatted.display }}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="drawer-body">
-          <div class="transfer-container">
+        <!-- 原始 JSON 签名快照 -->
+        <div v-if="activeDocTab === 'tab_json'" class="json-snapshot-wrapper">
+          <pre class="json-pre-box font-mono">{{ JSON.stringify(parsedData, null, 2) }}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 双栏穿梭式列定制中心抽屉 (保持全功能与多重备注、字段级显示模式配置) -->
+    <Teleport to="body">
+      <div
+        v-if="showTransferDrawer"
+        class="transfer-drawer-overlay"
+        @click.self="showTransferDrawer = false"
+      >
+        <div class="transfer-drawer-container">
+          <div class="drawer-header">
+            <div class="drawer-title-row">
+              <SlidersHorizontal class="w-5 h-5 text-blue-600 mr-2" />
+              <h3 class="drawer-title">单据字段与列个性化定制中心</h3>
+              <span class="drawer-object-tag">当前对象: <strong>{{ objectCode || 'CHORDR' }}</strong></span>
+              <span v-if="isCustomizedByMe" class="badge-customized-me ml-2">已启用个人专属偏好</span>
+            </div>
+            <button class="btn-close-drawer" @click="showTransferDrawer = false">
+              <X class="w-5 h-5 text-slate-500" />
+            </button>
+          </div>
+
+          <!-- 抽屉 Tab 切换 -->
+          <div class="drawer-tabs">
+            <button
+              :class="['drawer-tab', activeTransferTab === 'header' ? 'active' : '']"
+              @click="activeTransferTab = 'header'"
+            >
+              <Tag class="w-4 h-4 mr-1.5" />
+              <span>对象主表属性 ({{ allHeaderFieldsList.length }} 项)</span>
+            </button>
+
+            <button
+              v-for="c in processedCollections"
+              :key="c.key"
+              :class="['drawer-tab', activeTransferTab === c.key ? 'active' : '']"
+              @click="activeTransferTab = c.key"
+            >
+              <Layers class="w-4 h-4 mr-1.5" />
+              <span>{{ c.label }} ({{ c.allColumns.length }} 列)</span>
+            </button>
+
+            <button
+              :class="['drawer-tab', activeTransferTab === 'memo' ? 'active' : '']"
+              @click="activeTransferTab = 'memo'"
+            >
+              <FileText class="w-4 h-4 mr-1.5 text-amber-600" />
+              <span>备注专区字段归集 ({{ memoFieldKeys.length }} 项)</span>
+            </button>
+          </div>
+
+          <!-- 全局默认关联字典与代码呈现样式切换 -->
+          <div class="display-mode-selector-bar">
+            <div class="disp-mode-title">
+              <SlidersHorizontal class="w-4 h-4 text-slate-600 mr-1.5" />
+              <span class="font-bold text-slate-800 text-xs">全局关联字典与代码呈现样式:</span>
+            </div>
+            <div class="disp-mode-cards">
+              <div
+                class="mode-card-option"
+                :class="[fieldDisplayMode === 'NameAndCode' ? 'active' : '']"
+                @click="setDisplayMode('NameAndCode')"
+              >
+                <div class="mode-card-header">
+                  <span class="mode-name">描述 (代码)</span>
+                  <span class="mode-badge-rec">默认推荐</span>
+                </div>
+                <div class="mode-example">例：成品订单 (107)、月结 (18)、否 (N)</div>
+              </div>
+
+              <div
+                class="mode-card-option"
+                :class="[fieldDisplayMode === 'NameOnly' ? 'active' : '']"
+                @click="setDisplayMode('NameOnly')"
+              >
+                <div class="mode-card-header">
+                  <span class="mode-name">仅描述</span>
+                  <span class="mode-badge-sub">极简清爽</span>
+                </div>
+                <div class="mode-example">例：成品订单、月结、否</div>
+              </div>
+
+              <div
+                class="mode-card-option"
+                :class="[fieldDisplayMode === 'CodeOnly' ? 'active' : '']"
+                @click="setDisplayMode('CodeOnly')"
+              >
+                <div class="mode-card-header">
+                  <span class="mode-name">仅代码</span>
+                  <span class="mode-badge-code">高密代码</span>
+                </div>
+                <div class="mode-example">例：107、18、N</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 抽屉穿梭面板 -->
+          <div class="drawer-body">
             <!-- 左栏：待选字段素材库 -->
             <div class="transfer-pane transfer-left">
               <div class="pane-header">
@@ -1800,9 +1683,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                   <Search class="w-4 h-4 text-slate-500 mr-1.5" />
                   <span>待选字段素材库 ({{ transferLeftItems.length }})</span>
                 </div>
-                <button class="btn-link-action" @click="transferAddAll" title="一键全部显示">
-                  全部添加
-                </button>
+                <button class="btn-link-action" @click="transferAddAll" title="一键全部添加">全部添加</button>
               </div>
 
               <div class="pane-search">
@@ -1819,16 +1700,13 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                   v-for="item in transferLeftItems"
                   :key="item.key"
                   class="transfer-item transfer-item-left"
-                  :class="[item.isAdded ? 'item-added' : '']"
-                  @click="!item.isAdded && transferAddItem(item.key)"
                 >
                   <div class="item-info">
                     <div class="item-title-row">
                       <span class="item-label">{{ item.label }}</span>
                       <span class="item-key font-mono">{{ item.key }}</span>
-                      <span v-if="item.isSystem" class="tech-tag">技术字段</span>
                     </div>
-                    <div v-if="item.sampleVal && item.sampleVal !== '-'" class="item-sample">
+                    <div v-if="item.sampleVal" class="item-sample-val">
                       样例: {{ item.sampleVal }}
                     </div>
                   </div>
@@ -1845,27 +1723,23 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                     <Check class="w-3 h-3 mr-0.5" /> 已显示
                   </span>
                 </div>
-                <div v-if="transferLeftItems.length === 0" class="empty-list">
-                  未匹配到相关字段
-                </div>
+                <div v-if="transferLeftItems.length === 0" class="empty-list">未匹配到相关字段</div>
               </div>
             </div>
 
-            <!-- 中间穿梭指示分割 -->
+            <!-- 中间穿梭指示 -->
             <div class="transfer-divider">
               <ArrowRightLeft class="w-5 h-5 text-slate-400" />
             </div>
 
-            <!-- 右栏：当前显示字段与排列顺序 (支持上下拖拽调序) -->
+            <!-- 右栏：当前显示字段与排列顺序 (拖拽调序) -->
             <div class="transfer-pane transfer-right">
               <div class="pane-header">
                 <div class="pane-title">
                   <CheckCheck class="w-4 h-4 text-emerald-600 mr-1.5" />
                   <span>当前显示字段与顺序 ({{ transferRightItems.length }})</span>
                 </div>
-                <button class="btn-link-action text-rose-600" @click="transferRemoveAll" title="一键全部隐藏">
-                  全部清空
-                </button>
+                <button class="btn-link-action text-rose-600" @click="transferRemoveAll" title="一键全部清空">全部清空</button>
               </div>
 
               <div class="pane-search">
@@ -1879,7 +1753,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 
               <div class="reorder-tip-bar">
                 <GripVertical class="w-3.5 h-3.5 text-blue-600 mr-1" />
-                <span>按住左侧抓手 <strong>上下拖拽</strong> 即可调序在页面中的先后显示顺序</span>
+                <span>按住左侧抓手 <strong>上下拖拽</strong> 即可调序先后顺序</span>
               </div>
 
               <div class="transfer-list">
@@ -1909,17 +1783,18 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                   </div>
 
                   <div class="item-actions">
-                    <!-- 字段级呈现样式单独配置下拉 -->
+                    <!-- 单字段呈现模式下拉选择 -->
                     <select
+                      v-if="isCodeNameField(item.key, activeTransferTab !== 'header' && activeTransferTab !== 'memo' ? activeTransferTab : undefined)"
                       class="field-mode-select"
                       :value="fieldDisplayOverrides[item.key] || 'Inherit'"
                       @change="setFieldDisplayOverride(item.key, ($event.target as HTMLSelectElement).value as any)"
                       title="单独设置该字段呈现格式"
                     >
                       <option value="Inherit">跟随全局</option>
-                      <option value="NameAndCode">Name(Code)</option>
-                      <option value="NameOnly">仅 Name</option>
-                      <option value="CodeOnly">仅 Code</option>
+                      <option value="NameAndCode">描述 (代码)</option>
+                      <option value="NameOnly">仅描述</option>
+                      <option value="CodeOnly">仅代码</option>
                     </select>
 
                     <button
@@ -1931,9 +1806,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                     </button>
                   </div>
                 </div>
-                <div v-if="transferRightItems.length === 0" class="empty-list">
-                  当前未选择任何显示字段
-                </div>
+                <div v-if="transferRightItems.length === 0" class="empty-list">当前未选择任何显示字段</div>
               </div>
             </div>
           </div>
@@ -1941,856 +1814,1049 @@ const openTransferDrawer = (tabKey: string = 'header') => {
           <div v-if="drawerToast" :class="['drawer-toast', drawerToast.type]">
             {{ drawerToast.text }}
           </div>
-        </div>
 
-        <div class="drawer-footer">
-          <div class="footer-left">
-            <button
-              class="btn btn-secondary btn-sm"
-              :disabled="isSavingLayout"
-              @click="resetToCompanyDefaultLayout"
-              title="清除个人专属偏好，恢复为全公司统一的全局配置"
-            >
-              <RotateCcw class="w-3.5 h-3.5 mr-1" />
+          <!-- 抽屉底部操作栏 -->
+          <div class="drawer-footer">
+            <button class="btn-restore-default" @click="resetAllLayoutToFactoryDefault">
+              <RotateCcw class="w-4 h-4 mr-1" />
               <span>恢复全公司默认</span>
             </button>
-          </div>
 
-          <div class="footer-right">
-            <button
-              class="btn btn-primary btn-sm"
-              :disabled="isSavingLayout"
-              @click="saveUserLayoutToServer"
-              title="将当前布局保存为我的个人专属配置 (保存到服务器)"
-            >
-              <Save class="w-3.5 h-3.5 mr-1" />
-              <span>{{ isSavingLayout ? '正在保存...' : '保存为我的个人偏好' }}</span>
-            </button>
+            <div class="footer-save-btns">
+              <button
+                class="btn-save-user-pref"
+                :disabled="isSavingLayout"
+                @click="saveUserLayoutToServer"
+              >
+                <Save class="w-4 h-4 mr-1.5" />
+                <span>{{ isSavingLayout ? '正在保存...' : '保存为我的个人偏好' }}</span>
+              </button>
 
-            <button
-              v-if="isAdmin"
-              class="btn btn-admin-global btn-sm"
-              :disabled="isSavingLayout"
-              @click="saveGlobalDefaultLayoutToServer"
-              title="将当前字段与顺序发布为全公司的全局默认模板 (所有新用户默认生效)"
-            >
-              <ShieldCheck class="w-3.5 h-3.5 mr-1 text-amber-300" />
-              <span>保存为全公司默认配置 (Admin)</span>
-            </button>
+              <button
+                class="btn-save-global-default"
+                :disabled="isSavingLayout"
+                @click="saveGlobalDefaultLayoutToServer"
+                title="管理员权限：覆盖全公司新用户的默认排版规范"
+              >
+                <ShieldCheck class="w-4 h-4 mr-1.5" />
+                <span>保存为全公司默认配置 (Admin)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+/* ==========================================================================
+   世界级全端 DPI & Windows 缩放自适应架构 (适配 4K、1080p、1366x768、150% 缩放笔记本与工厂触控终端)
+   ========================================================================== */
+
 .doc-viewer-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
   gap: 8px;
+  box-sizing: border-box;
 }
 
-/* 顶部概览 Hero 卡片 */
-.summary-card {
-  display: flex;
-  justify-content: space-between;
+/* 1. 发票级紧凑 Hero 抬头 (自适应单行/双行，高密度收敛) */
+.summary-hero-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  padding: 10px 14px;
-  gap: 16px;
+  padding: 8px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  flex-shrink: 0;
 }
 
-.summary-card-reorder {
-  border: 2px dashed #3b82f6;
-  background: #eff6ff;
+.hero-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
-.summary-card-drag-over {
-  border-color: #10b981;
-  background: #ecfdf5;
-}
-
-.summary-left {
+.hero-left-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.s-label {
-  font-size: 11px;
-  color: #64748b;
-}
-
-.s-val-highlight {
+.customer-title-row {
   display: flex;
   align-items: center;
-  font-size: 14.5px;
+  min-width: 0;
+}
+
+.customer-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.customer-code-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: monospace;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #e2e8f0;
+}
+
+.hero-tags-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.hero-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.meta-pill-label {
+  color: #64748b;
+  font-size: 10.5px;
+}
+
+.meta-pill-val {
+  font-weight: 600;
   color: #0f172a;
 }
 
-.sub-code {
-  font-size: 11.5px;
-  color: #64748b;
-  margin-left: 6px;
-  font-family: monospace;
-}
-
-.summary-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.summary-sub-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-.sub-label {
-  color: #64748b;
-}
-
-.sub-val {
-  color: #1e293b;
-}
-
-.badge-trans {
-  background: #ecfdf5;
-  color: #047857;
-  font-weight: 600;
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.summary-comment {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #92400e;
-}
-
-.summary-right {
+/* 右侧发票级金额大字 (自适应字号) */
+.hero-right-section {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  min-width: 140px;
+  flex-shrink: 0;
 }
 
-.total-amount {
-  font-size: 18px;
-  font-weight: 800;
-  color: #059669;
-  font-family: monospace;
-}
-
-.docnum-tag {
-  font-size: 10.5px;
-  color: #64748b;
-  font-family: monospace;
-}
-
-/* Tab 选项卡导航条 */
-.doc-tab-bar {
+.amount-label-row {
   display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.doc-num-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.hero-total-amount {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height: 1.15;
+}
+
+/* 2. 多重备注收敛便签栏 */
+.memo-bar-wrapper {
+  background: #ffffff;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #f59e0b;
+  border-radius: 5px;
+  padding: 5px 10px;
+  flex-shrink: 0;
+}
+
+.memo-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  min-height: 20px;
+}
+
+.memo-bar-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.memo-preview-text {
+  font-size: 11.5px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.memo-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-memo-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.btn-memo-action:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-memo-toggle-flat {
+  background: transparent;
+  border: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #d97706;
+  cursor: pointer;
+}
+
+.memo-expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #fde68a;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.memo-expanded-card {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+
+.memo-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.memo-card-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.memo-card-field {
+  font-size: 9px;
+  color: #b45309;
+}
+
+.memo-card-content {
+  font-size: 11px;
+  color: #1e293b;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+/* 3. 一体化表格视窗容器 (Flex 1 自适应填满，高度永远贴合屏幕) */
+.table-unified-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  padding: 3px;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.doc-tab-btn {
+.table-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.table-tabs-group {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
+  gap: 3px;
+  overflow-x: auto;
+}
+
+.table-tab-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.15s;
+  white-space: nowrap;
 }
 
-.doc-tab-btn:hover {
+.table-tab-item:hover {
+  color: #0f172a;
   background: #f1f5f9;
-  color: #1e293b;
 }
 
-.doc-tab-btn.active {
-  background: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+.table-tab-item.active {
+  color: #2563eb;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.tab-count-badge {
-  margin-left: 6px;
+.tab-badge-count {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 0 4px;
+  border-radius: 8px;
+  margin-left: 5px;
+}
+
+.table-tab-item.active .tab-badge-count {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* 工具箱 (搜索、密度、定制) */
+.table-tools-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.table-search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  padding: 2px 6px;
+  width: 150px;
+}
+
+.table-search-box:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.table-search-input {
+  border: none;
+  outline: none;
+  font-size: 11px;
+  width: 100%;
+  color: #0f172a;
+  background: transparent;
+}
+
+.btn-clear-search {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.density-switch-group {
+  display: flex;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  padding: 1px;
+}
+
+.density-btn {
+  border: none;
+  background: transparent;
   font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
   padding: 1px 5px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  cursor: pointer;
 }
 
-.doc-tab-btn.active .tab-count-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+.density-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Tab 内容区 */
-.doc-tab-content {
+.btn-col-customize-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+
+.btn-col-customize-pill:hover {
+  background: #dbeafe;
+}
+
+/* 4. 数据表格 Sticky 视窗 (极客级虚拟弹性伸缩) */
+.table-viewport-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* 子表格区域 */
-.collection-block {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.collection-header {
+.collection-table-box {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
-.c-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.c-title h4 {
-  margin: 0;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.c-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-reorder-toggle, .btn-col-config, .btn-filter {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-reorder-toggle:hover, .btn-col-config:hover, .btn-filter:hover {
-  background: #f1f5f9;
-}
-
-.btn-reorder-toggle.active-reorder, .btn-filter.active {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.drag-active-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #faf5ff;
-  border-bottom: 1px solid #e9d5ff;
-  padding: 6px 12px;
-  font-size: 11px;
-  color: #6b21a8;
-}
-
-.table-responsive {
-  max-height: 480px;
+.table-scroll-container {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  position: relative;
 }
 
-.data-table {
+.modern-grid-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11.5px;
   text-align: left;
 }
 
-.data-table th {
+.modern-grid-table thead {
   position: sticky;
   top: 0;
-  background: #f8fafc;
-  border-bottom: 1px solid #cbd5e1;
-  padding: 6px 10px;
-  font-weight: 700;
-  color: #334155;
-  white-space: nowrap;
-  z-index: 2;
+  z-index: 10;
 }
 
-.data-table td {
-  padding: 6px 10px;
+.modern-grid-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 2px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.th-seq-col, .td-seq-col {
+  width: 32px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.grid-row:hover td {
+  background-color: #f8fafc;
+}
+
+.grid-row td {
   border-bottom: 1px solid #f1f5f9;
+  padding: 5px 8px;
   color: #1e293b;
   white-space: nowrap;
 }
 
-.data-table tbody tr:hover {
-  background: #f8fafc;
+/* 密度控制 */
+.modern-grid-table.density-compact td {
+  padding: 3px 6px;
+  font-size: 10.5px;
+}
+.modern-grid-table.density-normal td {
+  padding: 5px 8px;
+  font-size: 11.5px;
+}
+.modern-grid-table.density-comfortable td {
+  padding: 8px 10px;
+  font-size: 12px;
 }
 
 .align-right {
   text-align: right;
-  font-family: monospace;
 }
 
-/* 主表 UDF 属性网格 */
-.ext-fields-block {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px;
+.cell-translated-badge {
+  color: #047857;
+  font-weight: 600;
 }
 
-.ext-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.ext-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ext-title h5 {
-  margin: 0;
-  font-size: 12.5px;
+.status-cell-closed {
+  background: #fef3c7;
+  color: #92400e;
   font-weight: 700;
-  color: #1e293b;
 }
 
-.ext-actions {
+/* 5. 主表 54 项卡片网格 */
+.header-fields-wrapper {
+  padding: 10px;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
-.search-box {
+.header-fields-filter-bar {
   display: flex;
   align-items: center;
   background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
-.search-input {
+.header-search-input {
   border: none;
-  background: transparent;
   outline: none;
-  font-size: 11px;
-  margin-left: 4px;
-  width: 140px;
+  background: transparent;
+  font-size: 11.5px;
+  width: 260px;
+  color: #0f172a;
 }
 
-.fields-grid {
+.modern-fields-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-  max-height: 480px;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 2px;
 }
 
-.field-cell {
+.modern-field-card {
+  background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
   padding: 6px 8px;
-  background: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: all 0.15s;
 }
 
-.field-cell:hover {
+.modern-field-card.pinned {
   border-color: #93c5fd;
-  background: #f8fafc;
+  background: #f8fbff;
 }
 
-.f-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.f-label-left {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-.f-label {
-  font-size: 10.5px;
-  color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.f-label-right {
+.card-top-line {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.f-key-code {
-  font-size: 9px;
-  color: #94a3b8;
-  font-family: monospace;
-}
-
-.btn-pin-toggle {
-  border: none;
-  background: transparent;
-  padding: 1px;
-  cursor: pointer;
-  color: #94a3b8;
-}
-
-.btn-pin-toggle.pinned {
-  color: #2563eb;
-}
-
-.f-val {
-  font-size: 12px;
-  color: #0f172a;
+.field-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
 }
 
-/* 原始 JSON 预览 */
-.json-preview-container {
-  background: #0f172a;
-  border-radius: 6px;
-  padding: 12px;
-  max-height: 480px;
+.field-key-code {
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+.card-mini-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-icon-action {
+  border: none;
+  background: transparent;
+  padding: 1px;
+  border-radius: 2px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.btn-icon-action:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.btn-icon-action.active {
+  color: #2563eb;
+}
+
+.btn-icon-action.active-memo {
+  color: #d97706;
+}
+
+.card-value-box {
+  font-size: 11.5px;
+  color: #0f172a;
+  word-break: break-all;
+  min-height: 16px;
+}
+
+.val-translated {
+  color: #047857;
+  font-weight: 600;
+}
+
+.json-snapshot-wrapper {
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
-.json-preview {
-  margin: 0;
-  font-family: monospace;
+.json-pre-box {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px;
+  border-radius: 4px;
   font-size: 11px;
-  color: #38bdf8;
-  line-height: 1.4;
 }
 
-/* 双栏穿梭抽屉样式 */
-.drawer-backdrop {
+/* ==========================================================================
+   响应式断点：针对笔记本低分辨率 (1366x768) 与 Windows 高缩放 (125% / 150%) 深度调优
+   ========================================================================== */
+@media (max-height: 768px) {
+  .doc-viewer-container {
+    gap: 6px;
+  }
+  .summary-hero-card {
+    padding: 6px 10px;
+  }
+  .customer-name {
+    font-size: 13px;
+  }
+  .hero-total-amount {
+    font-size: 17px;
+  }
+  .hero-meta-pill {
+    padding: 1px 4px;
+    font-size: 10.5px;
+  }
+  .table-toolbar-row {
+    padding: 3px 8px;
+  }
+  .table-tab-item {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .modern-grid-table thead th {
+    padding: 4px 6px;
+  }
+  .modern-grid-table.density-normal td {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+}
+
+/* 6. 列定制抽屉样式 (保持精致) */
+.transfer-drawer-overlay {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
   z-index: 9999;
   display: flex;
   justify-content: flex-end;
 }
 
-.drawer-panel {
-  width: 720px;
+.transfer-drawer-container {
+  width: 780px;
+  max-width: 92vw;
   height: 100vh;
   background: #ffffff;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
 }
 
 .drawer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
+  padding: 10px 16px;
   border-bottom: 1px solid #e2e8f0;
 }
 
-.drawer-title {
+.drawer-title-row {
   display: flex;
   align-items: center;
+}
+
+.drawer-title {
   font-size: 15px;
   font-weight: 700;
   color: #0f172a;
+  margin: 0;
 }
 
-.drawer-subtitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
+.drawer-object-tag {
+  font-size: 11px;
   color: #64748b;
-  margin-top: 2px;
-}
-
-.badge-user-pref {
-  background: #eff6ff;
-  color: #2563eb;
+  margin-left: 8px;
+  background: #f1f5f9;
   padding: 1px 6px;
   border-radius: 3px;
+}
+
+.badge-customized-me {
   font-size: 10.5px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 1px 5px;
+  border-radius: 3px;
   font-weight: 600;
 }
 
-.badge-global-pref {
-  background: #f1f5f9;
-  color: #475569;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 10.5px;
-}
-
 .btn-close-drawer {
-  border: none;
   background: transparent;
+  border: none;
   cursor: pointer;
-  color: #64748b;
-  padding: 4px;
-}
-
-.btn-close-drawer:hover {
-  color: #0f172a;
 }
 
 .drawer-tabs {
   display: flex;
+  gap: 4px;
+  padding: 6px 16px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
-  padding: 4px 18px 0 18px;
-  gap: 8px;
 }
 
 .drawer-tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  font-size: 12px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: #64748b;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   cursor: pointer;
 }
 
 .drawer-tab.active {
+  background: #ffffff;
   color: #2563eb;
-  font-weight: 700;
-  border-bottom-color: #2563eb;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-/* 呈现模式选择区样式 */
-.drawer-mode-section {
-  background: #f1f5f9;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 10px 18px;
+.display-mode-selector-bar {
+  padding: 8px 16px;
+  background: #fafbfc;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.mode-section-header {
-  display: flex;
-  align-items: center;
-  font-size: 11.5px;
-  margin-bottom: 8px;
-}
-
-.mode-cards-grid {
+.disp-mode-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 6px;
+  margin-top: 4px;
 }
 
-.mode-card {
+.mode-card-option {
   background: #ffffff;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 6px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  user-select: none;
 }
 
-.mode-card:hover {
-  border-color: #93c5fd;
-  background: #f8fafc;
-}
-
-.mode-card.active {
-  border-color: #2563eb;
+.mode-card-option.active {
+  border-color: #3b82f6;
   background: #eff6ff;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 1px #3b82f6;
 }
 
 .mode-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .mode-name {
-  font-size: 11.5px;
-  color: #1e293b;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.mode-card.active .mode-name {
+.mode-badge-rec {
+  font-size: 9px;
+  background: #dbeafe;
   color: #1d4ed8;
-}
-
-.mode-tag {
-  font-size: 9.5px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 0 3px;
+  border-radius: 2px;
   font-weight: 600;
 }
 
-.badge-default {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.badge-clean {
+.mode-badge-sub {
+  font-size: 9px;
   background: #dcfce7;
-  color: #166534;
+  color: #15803d;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
-.badge-compact {
+.mode-badge-code {
+  font-size: 9px;
   background: #f3e8ff;
-  color: #6b21a8;
+  color: #7e22ce;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
 .mode-example {
   font-size: 10px;
   color: #64748b;
-  line-height: 1.3;
-}
-
-.mode-example code {
-  background: #f1f5f9;
-  padding: 0 3px;
-  border-radius: 2px;
-  font-size: 9.5px;
-  color: #0f172a;
-}
-
-.mode-card.active .mode-example code {
-  background: #dbeafe;
-  color: #1e40af;
 }
 
 .drawer-body {
   flex: 1;
-  padding: 14px 18px;
-  overflow: hidden;
   display: flex;
-  flex-direction: column;
-}
-
-.transfer-container {
-  flex: 1;
-  display: flex;
-  gap: 12px;
   overflow: hidden;
+  padding: 10px 16px;
+  gap: 10px;
 }
 
 .transfer-pane {
   flex: 1;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
   display: flex;
   flex-direction: column;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
   overflow: hidden;
+  background: #ffffff;
 }
 
 .pane-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .pane-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #334155;
   display: flex;
   align-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: #1e293b;
 }
 
 .btn-link-action {
-  border: none;
-  background: transparent;
+  font-size: 10.5px;
   color: #2563eb;
-  font-size: 11px;
-  font-weight: 600;
+  background: transparent;
+  border: none;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .pane-search {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .pane-search-input {
-  width: 100%;
   border: none;
   outline: none;
-  font-size: 11.5px;
+  font-size: 11px;
+  width: 100%;
 }
 
 .reorder-tip-bar {
   display: flex;
   align-items: center;
   background: #eff6ff;
-  padding: 4px 10px;
-  font-size: 10.5px;
   color: #1d4ed8;
+  font-size: 10px;
+  padding: 3px 8px;
   border-bottom: 1px solid #dbeafe;
 }
 
 .transfer-list {
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .transfer-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  padding: 5px 6px;
+  border: 1px solid #f1f5f9;
+  border-radius: 3px;
   background: #ffffff;
-  font-size: 11.5px;
-  transition: all 0.15s;
 }
 
-.transfer-item-left {
-  cursor: pointer;
-}
-
-.transfer-item-left:hover:not(.item-added) {
-  border-color: #93c5fd;
+.transfer-item:hover {
   background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
-.transfer-item-left.item-added {
-  background: #f8fafc;
-  opacity: 0.6;
-  cursor: default;
-}
-
-.item-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.item-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.item-label {
-  color: #0f172a;
-}
-
-.item-key {
-  font-size: 10px;
-  color: #94a3b8;
-}
-
-.tech-tag {
-  font-size: 9px;
-  background: #f1f5f9;
-  color: #64748b;
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.item-sample {
-  font-size: 10px;
-  color: #64748b;
-}
-
-.btn-add-item, .btn-delete-item {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 2px;
-}
-
-.badge-added {
-  display: flex;
-  align-items: center;
-  font-size: 10.5px;
-  color: #10b981;
-  font-weight: 600;
+.transfer-item.dragging-source {
+  opacity: 0.4;
+  border: 1px dashed #3b82f6;
 }
 
 .reorder-grip {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-right: 6px;
+  gap: 2px;
+  margin-right: 4px;
 }
 
 .order-seq {
-  font-size: 10px;
+  font-size: 9.5px;
+  color: #94a3b8;
+  width: 12px;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.item-label {
+  font-size: 11px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-key {
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+.item-sample-val {
+  font-size: 9.5px;
   color: #64748b;
-  min-width: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge-added {
+  font-size: 10px;
+  color: #059669;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.btn-add-item {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  padding: 1px 3px;
+  cursor: pointer;
+}
+
+.btn-add-item:hover {
+  background: #dbeafe;
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-mode-select {
+  font-size: 9.5px;
+  padding: 1px 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+}
+
+.btn-delete-item {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .transfer-divider {
@@ -2799,23 +2865,30 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   justify-content: center;
 }
 
+.empty-list {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 18px 0;
+}
+
 .drawer-toast {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 11.5px;
+  margin: 0 16px 6px 16px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 11px;
   font-weight: 600;
-  margin-top: 8px;
 }
 
 .drawer-toast.success {
   background: #ecfdf5;
-  color: #065f46;
+  color: #047857;
   border: 1px solid #a7f3d0;
 }
 
 .drawer-toast.error {
   background: #fef2f2;
-  color: #991b1b;
+  color: #b91c1c;
   border: 1px solid #fecaca;
 }
 
@@ -2823,257 +2896,78 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 18px;
+  padding: 10px 16px;
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
 }
 
-.footer-right {
-  display: flex;
-  gap: 8px;
-}
-
-.btn {
+.btn-restore-default {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
+  padding: 5px 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11.5px;
+  color: #475569;
   cursor: pointer;
-  transition: all 0.15s;
 }
 
-.btn-primary {
+.footer-save-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-save-user-pref {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
   background: #2563eb;
   color: #ffffff;
   border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-save-user-pref:hover {
   background: #1d4ed8;
 }
 
-.btn-secondary {
-  background: #ffffff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #f1f5f9;
-}
-
-.btn-admin-global {
+.btn-save-global-default {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
   background: #0f172a;
   color: #ffffff;
-  border: 1px solid #334155;
+  border: none;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.btn-admin-global:hover:not(:disabled) {
+.btn-save-global-default:hover {
   background: #1e293b;
 }
 
-.btn-sm {
-  padding: 5px 10px;
-  font-size: 11.5px;
-}
-
-/* 多重备注专属展示区样式 */
-.memo-zone-container {
-  background: #ffffff;
-  border: 1px solid #fef3c7;
-  border-left: 4px solid #f59e0b;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.05);
-}
-
-.memo-zone-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.memo-zone-title {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-}
-
-.memo-count-tag {
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 10.5px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  margin-left: 8px;
-  font-weight: 600;
-}
-
-.memo-zone-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-memo-customize {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #334155;
-  cursor: pointer;
-}
-
-.btn-memo-customize:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
+.pinned-tag-mini {
+  font-size: 9px;
+  background: #dbeafe;
   color: #1d4ed8;
-}
-
-.btn-memo-toggle {
-  background: transparent;
-  border: none;
-  font-size: 11.5px;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.btn-memo-toggle:hover {
-  color: #0f172a;
-}
-
-.memo-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed #fde68a;
-}
-
-.memo-card-item {
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
-  border-radius: 5px;
-  padding: 8px 10px;
-}
-
-.memo-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.memo-card-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #92400e;
-}
-
-.memo-card-key {
-  font-size: 9.5px;
-  color: #b45309;
-}
-
-.memo-card-body {
-  font-size: 12px;
-  color: #1e293b;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-
-.btn-pin-toggle.in-memo {
-  color: #d97706;
-}
-
-.memo-tag-mini {
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 9.5px;
-  padding: 0 4px;
+  padding: 0 3px;
   border-radius: 2px;
   font-weight: 600;
 }
 
-
-.field-mode-select {
-  font-size: 10px;
-  padding: 2px 4px;
-  border: 1px solid #cbd5e1;
-  border-radius: 3px;
-  background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-  outline: none;
-}
-
-.field-mode-select:hover {
-  border-color: #93c5fd;
-}
-
-
-/* 草稿与借贷平衡提示条样式 */
-.doc-special-status-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  width: 100%;
-}
-
-.draft-badge-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-size: 11.5px;
+.memo-tag-mini {
+  font-size: 9px;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0 3px;
+  border-radius: 2px;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 20px;
 }
-
-.draft-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #2563eb;
-}
-
-.journal-balance-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 20px;
-}
-
-.journal-balance-pill.balanced {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #047857;
-}
-
-.journal-balance-pill.unbalanced {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-}
-
 </style>

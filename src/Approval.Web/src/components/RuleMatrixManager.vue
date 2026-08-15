@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { appConfig } from '../config'
 import {
   Plus,
   Edit2,
@@ -59,7 +60,7 @@ const builder = ref<{
 // 规则表单模型
 const form = ref({
   id: '',
-  companyId: 'DB_KCC',
+  companyId: appConfig.defaultCompanyId,
   objectCode: 'CHORDR',
   objectType: 'Document',
   ruleName: '',
@@ -97,7 +98,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const [rulesRes, defsRes] = await Promise.all([
-      api.get('/rules', { params: { companyId: 'DB_KCC' } }),
+      api.get('/rules', { params: { companyId: appConfig.defaultCompanyId } }),
       api.get('/definitions')
     ])
     rules.value = rulesRes.data.data || []
@@ -147,7 +148,7 @@ const openCreateModal = () => {
   }
   form.value = {
     id: '',
-    companyId: 'DB_KCC',
+    companyId: appConfig.defaultCompanyId,
     objectCode: 'CHORDR',
     objectType: 'Document',
     ruleName: '',
@@ -323,7 +324,7 @@ const runSimulation = async () => {
     }
 
     const res = await api.post('/rules/test-match', {
-      companyId: 'DB_KCC',
+      companyId: appConfig.defaultCompanyId,
       objectCode: sim.value.objectCode,
       creatorUserCode: sim.value.creatorUserCode,
       department: sim.value.department,

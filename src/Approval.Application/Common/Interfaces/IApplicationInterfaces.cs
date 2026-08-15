@@ -70,7 +70,9 @@ public record ObjectMetadataResult(
     string ObjectCode,
     string TableName,
     Dictionary<string, FieldMetaInfo> HeaderFields,
-    Dictionary<string, Dictionary<string, FieldMetaInfo>> ChildTableFields
+    Dictionary<string, Dictionary<string, FieldMetaInfo>> ChildTableFields,
+    Dictionary<string, string>? ChildTableDescriptions = null,
+    string? ObjectDescription = null
 );
 
 public record CompanyInfoResult(

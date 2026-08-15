@@ -94,7 +94,40 @@ public class OutboxRelayWorker : BackgroundService
                         var (_, currentHash) = CanonicalSnapshotBuilder.Build(currentDocument.RawJson);
                         if (!currentHash.Equals(dataHash, StringComparison.OrdinalIgnoreCase))
                             throw new InvalidOperationException("DOCUMENT_CHANGED：SAP 单据已与审批快照不一致，禁止回写 Approved");
+
+                        // 1. 若为草稿单据 (Drafts / 营销/库存/收付款草稿)：自动调用 Service Layer 原生过账
+                        if (string.Equals(objectCode, "Drafts", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(objectCode, "112", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var slClient = scope.ServiceProvider.GetService<Approval.SapAdapter.ServiceLayer.ServiceLayerClient>();
+                            if (slClient != null && slClient.MirrorEnabled)
+                            {
+                                var (postedEntry, postedNum) = await slClient.SaveDraftToDocumentAsync(objectKey, ct);
+                                _logger.LogInformation("[TraceID: {TraceId}] 草稿单据 #{DraftKey} 审批通过，已自动过账转为正式单据 (DocEntry: {PostedEntry}, DocNum: {PostedNum})",
+                                    msg.TraceId, objectKey, postedEntry, postedNum);
+
+                                var inst = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId, ct);
+                                if (inst != null)
+                                {
+                                    inst.PostedDocEntry = postedEntry;
+                                    inst.PostedDocNum = postedNum;
+                                }
+                            }
+                        }
+                        // 2. 若为日记账凭证批 (Journal Vouchers)：自动调用 Service Layer 记账过账
+                        else if (string.Equals(objectCode, "JournalVouchers", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(objectCode, "OBTD", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var slClient = scope.ServiceProvider.GetService<Approval.SapAdapter.ServiceLayer.ServiceLayerClient>();
+                            if (slClient != null && slClient.MirrorEnabled && int.TryParse(objectKey, out var vNum))
+                            {
+                                await slClient.PostJournalVoucherAsync(vNum, ct);
+                                _logger.LogInformation("[TraceID: {TraceId}] 日记账凭证批 #{VoucherNum} 审批通过，已成功过账转为正式日记账分录 (OJDT)",
+                                    msg.TraceId, vNum);
+                            }
+                        }
                     }
+
                     var writeSucceeded = await adapter.WriteApprovalMirrorAsync(companyId, objectKey, status, instanceId, dataHash, ct);
                     if (!writeSucceeded) throw new InvalidOperationException("SAP Adapter 返回回写失败");
 

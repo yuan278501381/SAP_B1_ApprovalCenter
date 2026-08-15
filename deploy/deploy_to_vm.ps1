@@ -79,11 +79,13 @@ robocopy "$distDir\Approval.Api" "$remoteBase\Approval.Api" /MIR /NP /NFL /NDO /
 Write-Host "  极速增量同步 Worker 文件至 $remoteBase\Approval.Worker..." -ForegroundColor DarkGray
 robocopy "$distDir\Approval.Worker" "$remoteBase\Approval.Worker" /MIR /NP /NFL /NDO /R:1 /W:1 | Out-Null
 
-# 强制同步最新 wwwroot 静态产物 (彻底消除旧版缓存)
-Write-Host "  强制同步前端静态产物至 $remoteBase\Approval.Api\wwwroot..." -ForegroundColor DarkGray
+# 强制同步最新 wwwroot 静态产物 (彻底消除旧版缓存与句柄锁死)
+Write-Host "  强制镜像同步前端静态产物至 $remoteBase\Approval.Api\wwwroot..." -ForegroundColor DarkGray
 $remoteWwwroot = "$remoteBase\Approval.Api\wwwroot"
-robocopy "$distDir\Approval.Api\wwwroot" "$remoteWwwroot" /MIR /NP /NFL /NDO /R:1 /W:1 | Out-Null
-Copy-Item -Path "$distDir\Approval.Api\wwwroot\index.html" -Destination "$remoteWwwroot\index.html" -Force
+if (Test-Path "$distDir\Approval.Api\wwwroot") {
+    # 先使用 Copy-Item 强行覆盖 assets 目录下的所有文件
+    Copy-Item -Path "$distDir\Approval.Api\wwwroot\*" -Destination "$remoteWwwroot" -Recurse -Force
+}
 
 # 3. 注入生产环境配置文件
 Write-Host "`n[3/5] 注入生产环境配置文件 (appsettings.Production.json)..." -ForegroundColor Yellow

@@ -18,6 +18,9 @@ public class WorkflowInstance
     public string CurrentVersionId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedAt { get; set; }
+    public string? TargetDocType { get; set; }     // 如果是草稿/凭证批，记录目标单据类型 (如 '13' 应收发票, '20' 采购收货)
+    public string? PostedDocEntry { get; set; }    // 审批通过并成功过账后的正式单据 DocEntry
+    public string? PostedDocNum { get; set; }      // 审批通过并成功过账后的正式单据 DocNum
     public byte[]? RowVersion { get; set; }
 
     public WorkflowDefinitionVersion? CurrentVersion { get; set; }

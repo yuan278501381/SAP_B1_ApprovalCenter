@@ -149,6 +149,38 @@ const resetPinnedFields = () => {
   syncLocalLayoutCache()
 }
 
+// 默认推荐纳入多重备注与说明专属区的字段 Key
+const DEFAULT_MEMO_FIELDS = [
+  'Comments', 'U_Comments', 'U_Remark', 'U_PackMemo', 'U_DELIVER', 'U_PAGREQ', 'U_saleass'
+]
+
+// 用户自定义归集在备注专区的字段 Key 数组 (持久化存储)
+const memoFieldKeys = ref<string[]>(
+  JSON.parse(localStorage.getItem(`sap_b1_memo_${props.objectCode || 'CHORDR'}`) || JSON.stringify(DEFAULT_MEMO_FIELDS))
+)
+
+const isMemoZoneExpanded = ref(true)
+
+const toggleMemoZone = () => {
+  isMemoZoneExpanded.value = !isMemoZoneExpanded.value
+}
+
+const isFieldInMemo = (key: string) => {
+  const stripped = key.startsWith('U_') ? key.substring(2) : key
+  return memoFieldKeys.value.includes(key) || memoFieldKeys.value.includes(stripped) || memoFieldKeys.value.includes('U_' + stripped)
+}
+
+const toggleMemoField = (key: string) => {
+  const stripped = key.startsWith('U_') ? key.substring(2) : key
+  const foundIdx = memoFieldKeys.value.findIndex(k => k === key || k === stripped || k === 'U_' + stripped)
+  if (foundIdx > -1) {
+    memoFieldKeys.value.splice(foundIdx, 1)
+  } else {
+    memoFieldKeys.value.push(key)
+  }
+  syncLocalLayoutCache()
+}
+
 // 1. 主表自定义隐藏与排序状态 (持久化存储)
 const userHiddenFields = ref<string[]>(
   JSON.parse(localStorage.getItem(`sap_b1_hidden_${props.objectCode || 'CHORDR'}_header`) || '[]')
@@ -165,14 +197,50 @@ const collectionColOrders = ref<Record<string, string[]>>(
   JSON.parse(localStorage.getItem(`sap_b1_col_order_${props.objectCode || 'CHORDR'}`) || '{}')
 )
 
+// 3. 关联字典与代码呈现模式: 'NameAndCode' (默认: 描述+代码) | 'NameOnly' (仅描述) | 'CodeOnly' (仅代码)
+const fieldDisplayMode = ref<'NameAndCode' | 'NameOnly' | 'CodeOnly'>(
+  (localStorage.getItem(`sap_b1_disp_mode_${props.objectCode || 'CHORDR'}`) as any) || 'NameAndCode'
+)
+
+
+// 4. 每个独立字段/列的自定义呈现模式覆盖 (Per-field display override)
+const fieldDisplayOverrides = ref<Record<string, 'Inherit' | 'NameAndCode' | 'NameOnly' | 'CodeOnly'>>(
+  JSON.parse(localStorage.getItem(`sap_b1_field_disp_${props.objectCode || 'CHORDR'}`) || '{}')
+)
+
+const setFieldDisplayOverride = (key: string, mode: 'Inherit' | 'NameAndCode' | 'NameOnly' | 'CodeOnly') => {
+  if (mode === 'Inherit') {
+    delete fieldDisplayOverrides.value[key]
+  } else {
+    fieldDisplayOverrides.value[key] = mode
+  }
+  syncLocalLayoutCache()
+}
+
+const getFieldEffectiveDisplayMode = (key: string): 'NameAndCode' | 'NameOnly' | 'CodeOnly' => {
+  const stripped = key.startsWith('U_') ? key.substring(2) : key
+  const override = fieldDisplayOverrides.value[key] || fieldDisplayOverrides.value[stripped] || fieldDisplayOverrides.value['U_' + stripped]
+  if (override && override !== 'Inherit') {
+    return override
+  }
+  return fieldDisplayMode.value
+}
+
+const setDisplayMode = (mode: 'NameAndCode' | 'NameOnly' | 'CodeOnly') => {
+  fieldDisplayMode.value = mode
+  syncLocalLayoutCache()
+}
+
 // 同步写入本地 LocalStorage
 const syncLocalLayoutCache = () => {
   const obj = props.objectCode || 'CHORDR'
   localStorage.setItem(`sap_b1_pinned_${obj}`, JSON.stringify(pinnedFieldKeys.value))
+  localStorage.setItem(`sap_b1_memo_${obj}`, JSON.stringify(memoFieldKeys.value))
   localStorage.setItem(`sap_b1_hidden_${obj}_header`, JSON.stringify(userHiddenFields.value))
   localStorage.setItem(`sap_b1_order_${obj}_header`, JSON.stringify(headerFieldOrder.value))
   localStorage.setItem(`sap_b1_col_hidden_${obj}`, JSON.stringify(collectionHiddenCols.value))
   localStorage.setItem(`sap_b1_col_order_${obj}`, JSON.stringify(collectionColOrders.value))
+  localStorage.setItem(`sap_b1_disp_mode_${obj}`, fieldDisplayMode.value)
 }
 
 // 异步从服务器加载分层 UI 配置 (优先个人专属偏好，其次全公司默认)
@@ -196,6 +264,9 @@ const loadTieredLayoutFromServer = async () => {
         if (parsed.pinnedKeys && Array.isArray(parsed.pinnedKeys)) {
           pinnedFieldKeys.value = parsed.pinnedKeys
         }
+        if (parsed.memoKeys && Array.isArray(parsed.memoKeys)) {
+          memoFieldKeys.value = parsed.memoKeys
+        }
         if (parsed.hiddenHeaderKeys && Array.isArray(parsed.hiddenHeaderKeys)) {
           userHiddenFields.value = parsed.hiddenHeaderKeys
         }
@@ -207,6 +278,12 @@ const loadTieredLayoutFromServer = async () => {
         }
         if (parsed.colOrderMap && typeof parsed.colOrderMap === 'object') {
           collectionColOrders.value = parsed.colOrderMap
+        }
+        if (parsed.fieldDisplayOverrides && typeof parsed.fieldDisplayOverrides === 'object') {
+          fieldDisplayOverrides.value = parsed.fieldDisplayOverrides
+        }
+        if (parsed.displayMode) {
+          fieldDisplayMode.value = parsed.displayMode
         }
         syncLocalLayoutCache()
       }
@@ -342,17 +419,38 @@ const formatFieldValue = (key: string, val: any, childTableId?: string): { displ
     validMap = metaData.value.headerFields?.[key]?.validValues || metaData.value.headerFields?.[stripped]?.validValues || null
   }
 
+  const effMode = getFieldEffectiveDisplayMode(key)
+
   if (validMap && validMap[strVal]) {
+    const desc = validMap[strVal]
+    let display = `${desc} (${strVal})`
+    if (effMode === 'NameOnly') {
+      display = desc
+    } else if (effMode === 'CodeOnly') {
+      display = strVal
+    } else {
+      display = `${desc} (${strVal})`
+    }
     return {
-      display: `${validMap[strVal]} (${strVal})`,
+      display,
       isTranslated: true,
       rawVal: val
     }
   }
 
   if (key === 'U_Close' || key === 'LineCls') {
-    if (strVal.toUpperCase() === 'Y') return { display: '是 (Y)', isTranslated: true, rawVal: val }
-    if (strVal.toUpperCase() === 'N') return { display: '否 (N)', isTranslated: true, rawVal: val }
+    const isY = strVal.toUpperCase() === 'Y'
+    const desc = isY ? '是' : '否'
+    const code = isY ? 'Y' : 'N'
+    let display = `${desc} (${code})`
+    if (effMode === 'NameOnly') {
+      display = desc
+    } else if (effMode === 'CodeOnly') {
+      display = code
+    } else {
+      display = `${desc} (${code})`
+    }
+    return { display, isTranslated: true, rawVal: val }
   }
 
   const lKey = key.toLowerCase()
@@ -382,6 +480,38 @@ const formatFieldValue = (key: string, val: any, childTableId?: string): { displ
 }
 
 // 提取顶部概览卡片动态钉选字段列表
+
+// 针对草稿与财务日记账分录的智能识别与借贷平衡预计算
+const isDraftDocument = computed(() => {
+  const obj = (props.objectCode || parsedData.value?.Object || '').toUpperCase()
+  return obj === 'DRAFTS' || obj === 'ODRF' || obj === '112' || parsedData.value?.DocObjectCode !== undefined
+})
+
+const journalBalanceInfo = computed(() => {
+  const obj = (props.objectCode || parsedData.value?.Object || '').toUpperCase()
+  if (obj !== 'OJDT' && obj !== 'JOURNALENTRIES' && obj !== 'OBTD' && obj !== 'JOURNALVOUCHERS') return null
+
+  let totalDebit = 0
+  let totalCredit = 0
+  const lines = parsedData.value?.JournalEntryLines || parsedData.value?.JournalVoucherLines || parsedData.value?.BTD1 || parsedData.value?.JDT1 || []
+  if (Array.isArray(lines)) {
+    lines.forEach((l: any) => {
+      const deb = parseFloat(l.Debit || l.SYMDeb || l.DebitSys || 0)
+      const cred = parseFloat(l.Credit || l.SYMCred || l.CreditSys || 0)
+      if (!isNaN(deb)) totalDebit += deb
+      if (!isNaN(cred)) totalCredit += cred
+    })
+  }
+
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001
+  return {
+    totalDebit,
+    totalCredit,
+    isBalanced,
+    diff: Math.abs(totalDebit - totalCredit)
+  }
+})
+
 const topPinnedFields = computed(() => {
   const data = parsedData.value
   const result: { key: string; label: string; formatted: { display: string; isTranslated: boolean; rawVal: any } }[] = []
@@ -414,9 +544,76 @@ const topPinnedFields = computed(() => {
   return result
 })
 
+// 提取专属多重备注与长文本卡片列表 (0 运行时开销，杜绝内联函数重绘)
+const processedMemoFields = computed(() => {
+  const data = parsedData.value
+  if (!data) return []
+
+  const result: {
+    key: string
+    label: string
+    value: string
+    hasContent: boolean
+  }[] = []
+
+  memoFieldKeys.value.forEach(k => {
+    let actualVal = data[k]
+    let actualKey = k
+    if (actualVal === undefined) {
+      const alt = k.startsWith('U_') ? k.substring(2) : ('U_' + k)
+      if (data[alt] !== undefined) {
+        actualVal = data[alt]
+        actualKey = alt
+      }
+    }
+
+    if (actualVal !== undefined && actualVal !== null) {
+      const strVal = String(actualVal).trim()
+      if (strVal !== '' && strVal !== '-') {
+        const formatted = formatFieldValue(actualKey, actualVal)
+        result.push({
+          key: k,
+          label: getFieldLabel(k),
+          value: formatted.display,
+          hasContent: true
+        })
+      }
+    }
+  })
+
+  return result
+})
+
+// 智能子表标题清洗器 (剥离主表冗余前缀如 '型号订单 - '、'型号订单 - 表头 - ')
+const cleanTableDescription = (desc: string, objDesc?: string): string => {
+  if (!desc) return desc
+  let res = desc.trim()
+
+  // 1. 如果包含对象自身名称 (例如 '型号订单'、'销售订单')，剥离前缀
+  if (objDesc && res.startsWith(objDesc)) {
+    res = res.substring(objDesc.length).trim()
+  }
+
+  // 2. 剥离常见连接符与冗余词缀
+  res = res.replace(/^[-\s—:]+/, '')
+  res = res.replace(/^表头\s*[-\s—:]+/, '')
+  res = res.replace(/^行\s*[-\s—:]+/, '')
+  res = res.replace(/^主表\s*[-\s—:]+/, '')
+
+  // 3. 严格遵循 SAP Business One 官方客户端标准术语规范
+  if (res === '行' || res === '明细' || res === '明细行') {
+    res = '内容'
+  } else if (res === '生产明细' || res === '工序明细') {
+    res = '组件'
+  }
+
+  return res.trim() || desc
+}
+
 // 提取全部子表集合与预计算单元格 (0 运行时开销，杜绝内联函数重绘)
 const processedCollections = computed(() => {
   const data = parsedData.value
+  const objName = metaData.value?.objectDescription || '型号订单'
   const result: {
     key: string
     label: string
@@ -433,19 +630,43 @@ const processedCollections = computed(() => {
   for (const [k, v] of Object.entries(data)) {
     if (Array.isArray(v) && v.length > 0) {
       let tableId = '@CH_ORDR_1'
-      let label = '型号明细子表 (Line Items)'
+      let cleanKey = k.replace('Collection', '')
+      if (!cleanKey.startsWith('@')) cleanKey = '@' + cleanKey
+
+      // 1. 优先从 SAP 真实数据库元数据字典 (OUDO / UDO1 / OUTB / 标准单据) 提取子表中文描述
+      let rawTableDesc = metaData.value?.childTableDescriptions?.[k]
+        || metaData.value?.childTableDescriptions?.[cleanKey]
+        || metaData.value?.childTableDescriptions?.[cleanKey.substring(1)]
+        || ''
 
       if (k.includes('1Collection') || k === 'DocumentLines') {
         tableId = '@CH_ORDR_1'
-        label = '型号明细表 (Line Items)'
+        if (!rawTableDesc) rawTableDesc = '型号订单 - 行'
       } else if (k.includes('3Collection')) {
         tableId = '@CH_ORDR_3'
-        label = '工序费用表 (Operations & Expenses)'
+        if (!rawTableDesc) rawTableDesc = '型号订单 - 表头 - 附加费用'
       } else if (k.includes('2Collection')) {
         tableId = '@CH_ORDR_2'
-        label = '子表集合二'
       } else {
-        label = `子表集合 (${k})`
+        tableId = cleanKey
+      }
+
+      // 智能剥离主表冗余前缀 (例如 '型号订单 - 行' -> '明细行', '型号订单 - 表头 - 附加费用' -> '附加费用')
+      const cleanDesc = cleanTableDescription(rawTableDesc, objName)
+
+      // 2. 根据用户设置的呈现模式格式化 Tab 标签与表头
+      const effMode = getFieldEffectiveDisplayMode(k)
+      let label = ''
+      if (cleanDesc) {
+        if (effMode === 'NameOnly') {
+          label = cleanDesc
+        } else if (effMode === 'CodeOnly') {
+          label = tableId
+        } else {
+          label = `${cleanDesc} (${tableId})`
+        }
+      } else {
+        label = tableId
       }
 
       const allColsSet = new Set<string>()
@@ -536,6 +757,7 @@ const allHeaderFieldsList = computed(() => {
     }
   }
 
+  // 1. 遍历当前单据中拥有的字段
   for (const [k, v] of Object.entries(data)) {
     if (!excludeKeys.has(k) && !Array.isArray(v) && typeof v !== 'object') {
       const label = getFieldLabel(k)
@@ -548,6 +770,25 @@ const allHeaderFieldsList = computed(() => {
         isSystem,
         formatted
       })
+    }
+  }
+
+  // 2. 全量 Union 合并 SAP 数据库 (CUFD) 中定义的所有表头扩展字段 (哪怕当前单据取值为空也能搜索和配置)
+  if (metaData.value?.headerFields) {
+    for (const [k, meta] of Object.entries(metaData.value.headerFields)) {
+      if (!fieldsMap.has(k) && !excludeKeys.has(k)) {
+        const actualVal = data[k] !== undefined ? data[k] : (data[k.startsWith('U_') ? k.substring(2) : ('U_' + k)])
+        const label = (meta as any)?.description || getFieldLabel(k)
+        const formatted = formatFieldValue(k, actualVal ?? '-')
+        const isSystem = DEFAULT_HIDDEN_FIELDS.includes(k)
+
+        fieldsMap.set(k, {
+          key: k,
+          label,
+          isSystem,
+          formatted
+        })
+      }
     }
   }
 
@@ -752,7 +993,8 @@ const getLayoutPayloadJson = () => {
     hiddenHeaderKeys: userHiddenFields.value,
     headerOrder: headerFieldOrder.value,
     colHiddenMap: collectionHiddenCols.value,
-    colOrderMap: collectionColOrders.value
+    colOrderMap: collectionColOrders.value,
+    displayMode: fieldDisplayMode.value
   })
 }
 
@@ -821,7 +1063,21 @@ const resetToCompanyDefaultLayout = async () => {
 // ===================== 双栏穿梭抽屉数据计算与操作 =====================
 const transferLeftItems = computed(() => {
   const q = transferSearchLeft.value.trim().toLowerCase()
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    return allHeaderFieldsList.value.map(f => {
+      const isAdded = isFieldInMemo(f.key)
+      return {
+        key: f.key,
+        label: f.label,
+        isSystem: f.isSystem,
+        isAdded,
+        sampleVal: f.formatted.display
+      }
+    }).filter(item => {
+      if (!q) return true
+      return item.key.toLowerCase().includes(q) || item.label.toLowerCase().includes(q) || item.sampleVal?.toLowerCase().includes(q)
+    })
+  } else if (activeTransferTab.value === 'header') {
     return allHeaderFieldsList.value.map(f => {
       const isAdded = !userHiddenFields.value.includes(f.key)
       return {
@@ -858,13 +1114,28 @@ const transferLeftItems = computed(() => {
 
 const transferRightItems = computed(() => {
   const q = transferSearchRight.value.trim().toLowerCase()
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    return memoFieldKeys.value.map(k => {
+      const f = allHeaderFieldsList.value.find(item => item.key === k) || { key: k, label: getFieldLabel(k), formatted: { display: '-' } }
+      return {
+        key: k,
+        label: f.label,
+        isPinned: false,
+        isInMemo: true,
+        sampleVal: f.formatted?.display || '-'
+      }
+    }).filter(item => {
+      if (!q) return true
+      return item.key.toLowerCase().includes(q) || item.label.toLowerCase().includes(q)
+    })
+  } else if (activeTransferTab.value === 'header') {
     return allHeaderFieldsList.value
       .filter(f => !userHiddenFields.value.includes(f.key))
       .map(f => ({
         key: f.key,
         label: f.label,
         isPinned: isFieldPinned(f.key),
+        isInMemo: isFieldInMemo(f.key),
         sampleVal: f.formatted.display
       }))
       .filter(item => {
@@ -882,6 +1153,7 @@ const transferRightItems = computed(() => {
         key: colKey,
         label: coll.columnLabels[colKey] || colKey,
         isPinned: false,
+        isInMemo: false,
         sampleVal: coll.processedRows[0]?.cells[colKey]?.display || '-'
       }))
       .filter(item => {
@@ -892,7 +1164,11 @@ const transferRightItems = computed(() => {
 })
 
 const transferAddItem = (key: string) => {
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    if (!memoFieldKeys.value.includes(key)) {
+      memoFieldKeys.value.push(key)
+    }
+  } else if (activeTransferTab.value === 'header') {
     userHiddenFields.value = userHiddenFields.value.filter(k => k !== key)
   } else {
     const tableKey = activeTransferTab.value
@@ -906,7 +1182,9 @@ const transferAddItem = (key: string) => {
 }
 
 const transferRemoveItem = (key: string) => {
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    memoFieldKeys.value = memoFieldKeys.value.filter(k => k !== key)
+  } else if (activeTransferTab.value === 'header') {
     if (!userHiddenFields.value.includes(key)) {
       userHiddenFields.value.push(key)
     }
@@ -924,7 +1202,9 @@ const transferRemoveItem = (key: string) => {
 }
 
 const transferAddAll = () => {
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    memoFieldKeys.value = allHeaderFieldsList.value.map(f => f.key)
+  } else if (activeTransferTab.value === 'header') {
     userHiddenFields.value = []
   } else {
     const tableKey = activeTransferTab.value
@@ -937,7 +1217,9 @@ const transferAddAll = () => {
 }
 
 const transferRemoveAll = () => {
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    memoFieldKeys.value = []
+  } else if (activeTransferTab.value === 'header') {
     userHiddenFields.value = allHeaderFieldsList.value.map(f => f.key)
   } else {
     const tableKey = activeTransferTab.value
@@ -974,7 +1256,17 @@ const onDrawerDrop = (targetKey: string) => {
     return
   }
 
-  if (activeTransferTab.value === 'header') {
+  if (activeTransferTab.value === 'memo') {
+    const list = [...memoFieldKeys.value]
+    const fromIdx = list.indexOf(draggingDrawerKey.value)
+    const toIdx = list.indexOf(targetKey)
+    if (fromIdx > -1 && toIdx > -1) {
+      list.splice(fromIdx, 1)
+      list.splice(toIdx, 0, draggingDrawerKey.value)
+      memoFieldKeys.value = list
+      syncLocalLayoutCache()
+    }
+  } else if (activeTransferTab.value === 'header') {
     const currentOrder = headerFieldOrder.value.length > 0
       ? [...headerFieldOrder.value]
       : allHeaderFieldsList.value.map(f => f.key)
@@ -1003,7 +1295,6 @@ const onDrawerDrop = (targetKey: string) => {
       syncLocalLayoutCache()
     }
   }
-
   draggingDrawerKey.value = null
 }
 
@@ -1032,14 +1323,29 @@ const openTransferDrawer = (tabKey: string = 'header') => {
       @dragleave="onTopSummaryDragLeave"
       @drop="onTopSummaryDrop"
     >
+      
+      <!-- 财务/库存过账草稿与借贷平衡专属状态指示条 -->
+      <div v-if="isDraftDocument || journalBalanceInfo" class="doc-special-status-bar">
+        <div v-if="isDraftDocument" class="draft-badge-pill">
+          <span class="draft-dot"></span>
+          <span>📋 财务/库存过账草稿 (审批通过后将由后台 Worker 自动调用 Service Layer 过账至 SAP)</span>
+        </div>
+
+        <div v-if="journalBalanceInfo" class="journal-balance-pill" :class="[journalBalanceInfo.isBalanced ? 'balanced' : 'unbalanced']">
+          <span v-if="journalBalanceInfo.isBalanced">⚖️ 凭证借贷平衡：借贷总额 {{ currencySymbol }} {{ journalBalanceInfo.totalDebit.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) }}</span>
+          <span v-else>⚠️ 借贷不平衡！借方 {{ currencySymbol }} {{ journalBalanceInfo.totalDebit }} ≠ 贷方 {{ currencySymbol }} {{ journalBalanceInfo.totalCredit }} (差额: {{ journalBalanceInfo.diff }})</span>
+        </div>
+      </div>
+
       <div class="summary-left">
         <!-- 客户名称 -->
         <div class="summary-item">
           <span class="s-label">客户 / 业务伙伴</span>
           <div class="s-val-highlight">
             <Building2 class="w-4 h-4 text-blue-500 mr-1.5" />
-            <strong>{{ parsedData.U_CardName || parsedData.CardName || '-' }}</strong>
-            <span v-if="parsedData.U_CardCode || parsedData.CardCode" class="sub-code">
+            <strong v-if="fieldDisplayMode === 'CodeOnly'">{{ parsedData.U_CardCode || parsedData.CardCode || '-' }}</strong>
+            <strong v-else>{{ parsedData.U_CardName || parsedData.CardName || '-' }}</strong>
+            <span v-if="fieldDisplayMode === 'NameAndCode' && (parsedData.U_CardCode || parsedData.CardCode)" class="sub-code">
               ({{ parsedData.U_CardCode || parsedData.CardCode }})
             </span>
           </div>
@@ -1114,6 +1420,44 @@ const openTransferDrawer = (tabKey: string = 'header') => {
           <RotateCcw class="w-3 h-3 mr-1" />
           <span>恢复默认看板</span>
         </button>
+      </div>
+    </div>
+
+
+    <!-- 1.5 世界级多重备注与说明专属展示区 (支持自适应多行、单据特别条款、一键收起/展开与个性化归集) -->
+    <div v-if="processedMemoFields.length > 0" class="memo-zone-container">
+      <div class="memo-zone-header" @click="toggleMemoZone">
+        <div class="memo-zone-title">
+          <FileText class="w-4 h-4 text-amber-600 mr-2" />
+          <span class="font-bold text-slate-800">单据多重备注与说明专区</span>
+          <span class="memo-count-tag">{{ processedMemoFields.length }} 项已归集备注</span>
+        </div>
+
+        <div class="memo-zone-actions" @click.stop>
+          <button class="btn-memo-customize" @click="openTransferDrawer('memo')" title="自定义归集哪些字段到备注专区">
+            <Settings2 class="w-3.5 h-3.5 mr-1 text-blue-600" />
+            <span>配置备注归集字段</span>
+          </button>
+          <button class="btn-memo-toggle" @click="toggleMemoZone">
+            <span>{{ isMemoZoneExpanded ? '收起备注' : '展开备注' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-show="isMemoZoneExpanded" class="memo-cards-grid">
+        <div
+          v-for="mf in processedMemoFields"
+          :key="mf.key"
+          class="memo-card-item"
+        >
+          <div class="memo-card-header">
+            <span class="memo-card-label">{{ mf.label }}</span>
+            <span class="memo-card-key font-mono">{{ mf.key }}</span>
+          </div>
+          <div class="memo-card-body">
+            {{ mf.value }}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1320,6 +1664,14 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                 >
                   <component :is="isFieldPinned(f.key) ? Pin : PinOff" class="w-3 h-3" />
                 </button>
+                <button
+                  class="btn-pin-toggle"
+                  :class="[isFieldInMemo(f.key) ? 'in-memo' : '']"
+                  @click.stop="toggleMemoField(f.key)"
+                  :title="isFieldInMemo(f.key) ? '已归入多重备注专区' : '点击归入多重备注专区'"
+                >
+                  <FileText class="w-3 h-3" />
+                </button>
               </div>
             </div>
             <div class="f-val-wrap">
@@ -1378,6 +1730,65 @@ const openTransferDrawer = (tabKey: string = 'header') => {
             <Layers class="w-4 h-4 mr-1.5" />
             <span>{{ c.label }} ({{ c.allColumns.length }} 列)</span>
           </button>
+          <button
+            :class="['drawer-tab', activeTransferTab === 'memo' ? 'active' : '']"
+            @click="activeTransferTab = 'memo'"
+          >
+            <FileText class="w-4 h-4 mr-1.5 text-amber-600" />
+            <span>备注专区字段归集 ({{ memoFieldKeys.length }} 项)</span>
+          </button>
+        </div>
+
+        <!-- 世界级代码与描述呈现模式选择器 -->
+        <div class="drawer-mode-section">
+          <div class="mode-section-header">
+            <SlidersHorizontal class="w-3.5 h-3.5 text-blue-600 mr-1.5" />
+            <span class="font-semibold text-slate-700">关联字典与代码呈现样式：</span>
+          </div>
+
+          <div class="mode-cards-grid">
+            <div
+              class="mode-card"
+              :class="[fieldDisplayMode === 'NameAndCode' ? 'active' : '']"
+              @click="setDisplayMode('NameAndCode')"
+            >
+              <div class="mode-card-header">
+                <span class="mode-name font-bold">描述与代码 Name (Code)</span>
+                <span class="mode-tag badge-default">默认推荐</span>
+              </div>
+              <div class="mode-example">
+                例：<code>成品订单 (107)</code>、<code>月结 (18)</code>、<code>否 (N)</code>
+              </div>
+            </div>
+
+            <div
+              class="mode-card"
+              :class="[fieldDisplayMode === 'NameOnly' ? 'active' : '']"
+              @click="setDisplayMode('NameOnly')"
+            >
+              <div class="mode-card-header">
+                <span class="mode-name font-bold">仅显示描述 Name</span>
+                <span class="mode-tag badge-clean">极简清爽</span>
+              </div>
+              <div class="mode-example">
+                例：<code>成品订单</code>、<code>月结</code>、<code>否</code>
+              </div>
+            </div>
+
+            <div
+              class="mode-card"
+              :class="[fieldDisplayMode === 'CodeOnly' ? 'active' : '']"
+              @click="setDisplayMode('CodeOnly')"
+            >
+              <div class="mode-card-header">
+                <span class="mode-name font-bold">仅显示代码 Code</span>
+                <span class="mode-tag badge-compact">高密代码</span>
+              </div>
+              <div class="mode-example">
+                例：<code>107</code>、<code>18</code>、<code>N</code>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="drawer-body">
@@ -1493,10 +1904,24 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                       <span class="item-label font-bold">{{ item.label }}</span>
                       <span class="item-key font-mono">{{ item.key }}</span>
                       <span v-if="item.isPinned" class="pinned-tag-mini">已置顶</span>
+                      <span v-if="item.isInMemo" class="memo-tag-mini">已归入备注区</span>
                     </div>
                   </div>
 
                   <div class="item-actions">
+                    <!-- 字段级呈现样式单独配置下拉 -->
+                    <select
+                      class="field-mode-select"
+                      :value="fieldDisplayOverrides[item.key] || 'Inherit'"
+                      @change="setFieldDisplayOverride(item.key, ($event.target as HTMLSelectElement).value as any)"
+                      title="单独设置该字段呈现格式"
+                    >
+                      <option value="Inherit">跟随全局</option>
+                      <option value="NameAndCode">Name(Code)</option>
+                      <option value="NameOnly">仅 Name</option>
+                      <option value="CodeOnly">仅 Code</option>
+                    </select>
+
                     <button
                       class="btn-delete-item"
                       @click="transferRemoveItem(item.key)"
@@ -2096,6 +2521,104 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   border-bottom-color: #2563eb;
 }
 
+/* 呈现模式选择区样式 */
+.drawer-mode-section {
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 18px;
+}
+
+.mode-section-header {
+  display: flex;
+  align-items: center;
+  font-size: 11.5px;
+  margin-bottom: 8px;
+}
+
+.mode-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.mode-card {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mode-card:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+}
+
+.mode-card.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+}
+
+.mode-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.mode-name {
+  font-size: 11.5px;
+  color: #1e293b;
+}
+
+.mode-card.active .mode-name {
+  color: #1d4ed8;
+}
+
+.mode-tag {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.badge-default {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-clean {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-compact {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.mode-example {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.mode-example code {
+  background: #f1f5f9;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-size: 9.5px;
+  color: #0f172a;
+}
+
+.mode-card.active .mode-example code {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .drawer-body {
   flex: 1;
   padding: 14px 18px;
@@ -2356,4 +2879,201 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   padding: 5px 10px;
   font-size: 11.5px;
 }
+
+/* 多重备注专属展示区样式 */
+.memo-zone-container {
+  background: #ffffff;
+  border: 1px solid #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.05);
+}
+
+.memo-zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.memo-zone-title {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.memo-count-tag {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+.memo-zone-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-memo-customize {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.btn-memo-customize:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.btn-memo-toggle {
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.btn-memo-toggle:hover {
+  color: #0f172a;
+}
+
+.memo-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #fde68a;
+}
+
+.memo-card-item {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.memo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.memo-card-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.memo-card-key {
+  font-size: 9.5px;
+  color: #b45309;
+}
+
+.memo-card-body {
+  font-size: 12px;
+  color: #1e293b;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+
+.btn-pin-toggle.in-memo {
+  color: #d97706;
+}
+
+.memo-tag-mini {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 9.5px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+
+.field-mode-select {
+  font-size: 10px;
+  padding: 2px 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+}
+
+.field-mode-select:hover {
+  border-color: #93c5fd;
+}
+
+
+/* 草稿与借贷平衡提示条样式 */
+.doc-special-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.draft-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.draft-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.journal-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.journal-balance-pill.balanced {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.journal-balance-pill.unbalanced {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
 </style>

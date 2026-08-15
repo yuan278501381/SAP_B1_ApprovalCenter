@@ -65,6 +65,73 @@ public sealed class ServiceLayerClient : IDisposable
         EnsureSuccess(response, responseBody);
     }
 
+    /// <summary>
+    /// 将草稿单据 (Draft) 自动过账为正式业务单据 (适用于应收发票、采购收货、收付款等)
+    /// </summary>
+    public async Task<(string DocEntry, string? DocNum)> SaveDraftToDocumentAsync(string draftDocEntry, CancellationToken ct)
+    {
+        if (!_options.MirrorEnabled)
+            throw new InvalidOperationException("SapAdapter:ServiceLayer:MirrorEnabled=false，已禁止真实 SAP 回写");
+
+        var path = $"DraftsService_SaveDraftToDocument";
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["Document"] = new Dictionary<string, object>
+            {
+                ["DocEntry"] = long.Parse(draftDocEntry)
+            }
+        });
+
+        using var response = await SendWithReloginAsync(() => new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json")
+        }, ct);
+
+        var responseBody = await response.Content.ReadAsStringAsync(ct);
+        EnsureSuccess(response, responseBody);
+
+        string postedEntry = draftDocEntry;
+        string? postedNum = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+            if (doc.RootElement.TryGetProperty("DocEntry", out var entryProp))
+                postedEntry = entryProp.GetInt64().ToString();
+            if (doc.RootElement.TryGetProperty("DocNum", out var numProp))
+                postedNum = numProp.GetInt64().ToString();
+        }
+        catch { }
+
+        return (postedEntry, postedNum);
+    }
+
+    /// <summary>
+    /// 将日记账凭证批 (Journal Voucher) 过账为正式财务会计日记账分录 (OJDT)
+    /// </summary>
+    public async Task<string> PostJournalVoucherAsync(int voucherNumber, CancellationToken ct)
+    {
+        if (!_options.MirrorEnabled)
+            throw new InvalidOperationException("SapAdapter:ServiceLayer:MirrorEnabled=false，已禁止真实 SAP 回写");
+
+        var path = $"JournalVouchersService_PostVoucher";
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["JournalVoucher"] = new Dictionary<string, object>
+            {
+                ["JournalVoucherNumber"] = voucherNumber
+            }
+        });
+
+        using var response = await SendWithReloginAsync(() => new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json")
+        }, ct);
+
+        var responseBody = await response.Content.ReadAsStringAsync(ct);
+        EnsureSuccess(response, responseBody);
+        return responseBody;
+    }
+
     private async Task<HttpResponseMessage> SendWithReloginAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
     {
         await EnsureLoginAsync(ct);

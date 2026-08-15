@@ -145,3 +145,13 @@ public enum OutboxStatus
     Sent = 3,
     Failed = 4
 }
+
+/// <summary>
+/// 发件箱投递事件类型 (区分普通状态回写、草稿原子过账与日记账凭证过账)
+/// </summary>
+public enum OutboxEventType
+{
+    SyncStatusToSap = 1,        // 普通单据/UDO 状态字段回写
+    PostDraftToDocument = 2,    // 草稿单据自动过账 (SaveDraftToDocument)
+    PostJournalVoucher = 3      // 日记账凭证批自动过账 (PostVoucher)
+}

@@ -130,6 +130,9 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
             b.Property(x => x.SubmitterName).HasMaxLength(128);
             b.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             b.Property(x => x.CurrentVersionId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.TargetDocType).HasMaxLength(64);
+            b.Property(x => x.PostedDocEntry).HasMaxLength(128);
+            b.Property(x => x.PostedDocNum).HasMaxLength(128);
             b.Property(x => x.RowVersion).IsRowVersion();
             b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.ObjectKey, x.Status });
             b.HasIndex(x => new { x.CompanyId, x.ObjectCode, x.ObjectKey })

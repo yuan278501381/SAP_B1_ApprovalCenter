@@ -18,14 +18,10 @@
         <!-- 头部 -->
         <div class="panel-header">
           <div class="panel-title-wrap">
-            <SlidersHorizontal class="w-4 h-4 text-blue-600 mr-1.5" />
+            <SlidersHorizontal class="title-icon" />
             <span class="panel-title">全局字号与界面缩放</span>
           </div>
           <span class="user-tag">{{ currentUsername }} 专属偏好</span>
-        </div>
-
-        <div class="panel-desc">
-          支持连续无级拖动，适配不同年龄视力与高分大屏
         </div>
 
         <!-- 核心：滑块连续调节区 -->
@@ -89,19 +85,6 @@
             >
               {{ p.shortLabel }}
             </button>
-          </div>
-        </div>
-
-        <!-- 实时文字排版预览框 -->
-        <div class="preview-box">
-          <div class="preview-title">实时效果预览:</div>
-          <div class="preview-content" :style="{ fontSize: (13 * currentFontScale / 100) + 'px' }">
-            <div class="preview-line-main">
-              <strong>型号订单 #1709</strong> 邢台金宗泽服装有限公司
-            </div>
-            <div class="preview-line-sub">
-              单据总金额: <span class="text-blue-600 font-mono font-bold">¥ 4,839.54</span> · 审批状态: 待审批
-            </div>
           </div>
         </div>
 
@@ -223,11 +206,11 @@ onUnmounted(() => {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  width: 320px;
+  width: 290px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   z-index: 1000;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
 }
@@ -236,16 +219,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2px;
+  margin-bottom: 10px;
 }
 
 .panel-title-wrap {
   display: flex;
   align-items: center;
+  gap: 5px;
+}
+
+.title-icon {
+  width: 14px !important;
+  height: 14px !important;
+  color: #2563eb;
+  flex-shrink: 0;
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -259,19 +250,13 @@ onUnmounted(() => {
   font-family: ui-monospace, monospace;
 }
 
-.panel-desc {
-  font-size: 10.5px;
-  color: #64748b;
-  margin-bottom: 12px;
-}
-
 /* 滑块控制容器 */
 .slider-control-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   padding: 10px 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .slider-header-row {
@@ -429,36 +414,6 @@ onUnmounted(() => {
   border-color: #2563eb;
   color: #ffffff;
   font-weight: 600;
-}
-
-/* 实时预览区 */
-.preview-box {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 10px;
-}
-
-.preview-title {
-  font-size: 10px;
-  color: #94a3b8;
-  margin-bottom: 4px;
-}
-
-.preview-content {
-  line-height: 1.4;
-  color: #1e293b;
-  transition: font-size 0.1s ease;
-}
-
-.preview-line-main {
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
-.preview-line-sub {
-  color: #64748b;
 }
 
 .panel-footer {

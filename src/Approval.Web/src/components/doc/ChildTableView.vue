@@ -66,17 +66,38 @@ const props = defineProps<{
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 0;
   width: 100%;
-  height: 100%;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .table-scroll-container {
   flex: 1;
   min-height: 0;
+  height: 0;
   overflow: auto;
   position: relative;
   border-radius: 4px;
+}
+
+/* 高可见度极细现代滚动条 */
+.table-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* 现代企业级数据表格设计 */

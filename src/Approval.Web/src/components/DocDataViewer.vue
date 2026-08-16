@@ -1826,20 +1826,29 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 
 .memo-expanded-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 6px;
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px dashed #fde68a;
-  max-height: 180px;
+  max-height: 96px;
   overflow-y: auto;
+}
+
+.memo-expanded-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.memo-expanded-grid::-webkit-scrollbar-thumb {
+  background: #fcd34d;
+  border-radius: 2px;
 }
 
 .memo-expanded-card {
   background: #fffbeb;
   border: 1px solid #fef3c7;
   border-radius: 4px;
-  padding: 5px 8px;
+  padding: 4px 6px;
 }
 
 .memo-card-top {
@@ -1863,7 +1872,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .memo-card-content {
   font-size: 11px;
   color: #1e293b;
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: pre-wrap;
 }
 
@@ -1875,7 +1884,8 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
+  height: 0;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -2035,8 +2045,10 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   position: relative;
   flex: 1;
   min-height: 0;
+  height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .collection-table-box {

@@ -5,7 +5,7 @@
       class="font-switcher-btn"
       :class="{ 'active': isOpen }"
       @click.stop="toggleDropdown"
-      :title="'当前全局缩放: ' + currentFontScale + '% (点击拖动滑块调节)'"
+      :title="'当前全局缩放: ' + currentFontScale + '% (点击调节)'"
     >
       <span class="aa-icon">Aa</span>
       <span class="font-label font-mono font-bold">{{ currentFontScale }}%</span>
@@ -27,9 +27,9 @@
         <!-- 核心：滑块连续调节区 -->
         <div class="slider-control-box">
           <div class="slider-header-row">
-            <span class="scale-label">当前缩放:</span>
+            <span class="scale-label">缩放比例:</span>
             <div class="scale-value-pill">
-              <span class="scale-num font-mono">{{ currentFontScale }}%</span>
+              <span class="scale-num font-mono">{{ tempScale }}%</span>
               <span class="scale-name">{{ currentPresetName }}</span>
             </div>
           </div>
@@ -37,9 +37,9 @@
           <div class="slider-row">
             <button
               class="btn-step"
-              @click="stepUserFontScale(-5)"
+              @click="stepScale(-5)"
               title="减小 5%"
-              :disabled="currentFontScale <= minScale"
+              :disabled="tempScale <= minScale"
             >
               <span class="step-text">A-</span>
             </button>
@@ -50,8 +50,9 @@
                 :min="minScale"
                 :max="maxScale"
                 step="1"
-                :value="currentFontScale"
+                :value="tempScale"
                 @input="onSliderInput"
+                @change="onSliderChange"
                 class="modern-range-slider"
               />
               <div class="range-ticks">
@@ -66,9 +67,9 @@
 
             <button
               class="btn-step"
-              @click="stepUserFontScale(5)"
+              @click="stepScale(5)"
               title="增大 5%"
-              :disabled="currentFontScale >= maxScale"
+              :disabled="tempScale >= maxScale"
             >
               <span class="step-text">A+</span>
             </button>
@@ -81,16 +82,11 @@
               :key="p.value"
               class="btn-preset-pill"
               :class="{ 'active': currentFontScale === p.value }"
-              @click="setUserFontScale(p.value)"
+              @click="applyPreset(p.value)"
             >
               {{ p.shortLabel }}
             </button>
           </div>
-        </div>
-
-        <!-- 底部 -->
-        <div class="panel-footer">
-          <span class="hint-text">💡 拖动即时生效，换电脑自动同步该账号设置</span>
         </div>
       </div>
     </transition>
@@ -98,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useFontSize } from '../../composables/useFontSize'
 import { SlidersHorizontal, ChevronDown } from 'lucide-vue-next'
 
@@ -108,29 +104,56 @@ const {
   minScale,
   maxScale,
   presets,
-  setUserFontScale,
-  stepUserFontScale
+  setUserFontScale
 } = useFontSize()
 
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
+const tempScale = ref(currentFontScale.value)
+
+watch(currentFontScale, (newVal) => {
+  tempScale.value = newVal
+})
 
 const currentPresetName = computed(() => {
-  const matched = presets.find(p => p.value === currentFontScale.value)
+  const matched = presets.find(p => p.value === tempScale.value)
   if (matched) return matched.label
-  if (currentFontScale.value <= 92) return '紧凑精简'
-  if (currentFontScale.value >= 122) return '特大清晰'
-  if (currentFontScale.value >= 108) return '舒适大字'
+  if (tempScale.value <= 92) return '紧凑精简'
+  if (tempScale.value >= 122) return '特大清晰'
+  if (tempScale.value >= 108) return '舒适大字'
   return '自定义'
 })
 
 const toggleDropdown = () => {
   isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    tempScale.value = currentFontScale.value
+  }
 }
 
+// 拖动时仅改变局部临时数字，不频繁重绘整个 DOM，保障 120fps 顺滑
 const onSliderInput = (e: Event) => {
+  tempScale.value = Number((e.target as HTMLInputElement).value)
+}
+
+// 松开鼠标/滑动停止时才一次性应用全局生效
+const onSliderChange = (e: Event) => {
   const val = Number((e.target as HTMLInputElement).value)
+  tempScale.value = val
   setUserFontScale(val)
+}
+
+// 点击吸附预设直接应用
+const applyPreset = (val: number) => {
+  tempScale.value = val
+  setUserFontScale(val)
+}
+
+// 点击 A- / A+ 按钮直接应用
+const stepScale = (delta: number) => {
+  const next = Math.max(minScale, Math.min(maxScale, tempScale.value + delta))
+  tempScale.value = next
+  setUserFontScale(next)
 }
 
 // 点击外部区域自动收起
@@ -256,7 +279,7 @@ onUnmounted(() => {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   padding: 10px 12px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .slider-header-row {
@@ -414,17 +437,6 @@ onUnmounted(() => {
   border-color: #2563eb;
   color: #ffffff;
   font-weight: 600;
-}
-
-.panel-footer {
-  border-top: 1px solid #f1f5f9;
-  padding-top: 8px;
-  text-align: center;
-}
-
-.hint-text {
-  font-size: 10.5px;
-  color: #94a3b8;
 }
 
 /* 动效 */

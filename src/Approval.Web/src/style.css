@@ -100,18 +100,71 @@ body {
 
 /* ==========================================================================
    世界级流体相对图标设计系统 (Fluid Font-Relative Icon System)
+   彻底根治 Lucide 默认 24px 膨胀与全系统图标大小失衡顽疾
    ========================================================================== */
-.app-icon,
-svg.app-icon {
-  width: 1em;
-  height: 1em;
-  min-width: 1em;
-  min-height: 1em;
-  max-width: 1em;
-  max-height: 1em;
+svg,
+svg.lucide,
+.lucide {
+  width: 1.15em;
+  height: 1.15em;
+  min-width: 1.15em;
+  min-height: 1.15em;
+  max-width: 1.15em;
+  max-height: 1.15em;
   flex-shrink: 0;
   display: inline-block;
-  vertical-align: -0.125em;
+  vertical-align: -0.15em;
+  stroke-width: 2px;
+}
+
+/* 原子级图标尺寸标准映射 (严格锁定像素规约) */
+.w-2\.5, .h-2\.5, svg.w-2\.5, svg.h-2\.5 { width: 10px !important; height: 10px !important; min-width: 10px !important; min-height: 10px !important; max-width: 10px !important; max-height: 10px !important; }
+.w-3, .h-3, svg.w-3, svg.h-3 { width: 12px !important; height: 12px !important; min-width: 12px !important; min-height: 12px !important; max-width: 12px !important; max-height: 12px !important; }
+.w-3\.5, .h-3\.5, svg.w-3\.5, svg.h-3\.5 { width: 13.5px !important; height: 13.5px !important; min-width: 13.5px !important; min-height: 13.5px !important; max-width: 13.5px !important; max-height: 13.5px !important; }
+.w-4, .h-4, svg.w-4, svg.h-4 { width: 14.5px !important; height: 14.5px !important; min-width: 14.5px !important; min-height: 14.5px !important; max-width: 14.5px !important; max-height: 14.5px !important; }
+.w-5, .h-5, svg.w-5, svg.h-5 { width: 18px !important; height: 18px !important; min-width: 18px !important; min-height: 18px !important; max-width: 18px !important; max-height: 18px !important; }
+.w-6, .h-6, svg.w-6, svg.h-6 { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 22px !important; max-width: 22px !important; max-height: 22px !important; }
+
+/* 常用原子级微间距辅助类 */
+.mr-0\.5 { margin-right: 2px !important; }
+.mr-1 { margin-right: 4px !important; }
+.mr-1\.5 { margin-right: 6px !important; }
+.mr-2 { margin-right: 8px !important; }
+.mr-3 { margin-right: 12px !important; }
+.ml-0\.5 { margin-left: 2px !important; }
+.ml-1 { margin-left: 4px !important; }
+.ml-1\.5 { margin-left: 6px !important; }
+.ml-2 { margin-left: 8px !important; }
+
+/* 常用文字色彩工具类 */
+.text-white { color: #ffffff !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-slate-600 { color: #475569 !important; }
+.text-slate-700 { color: #334155 !important; }
+.text-slate-800 { color: #1e293b !important; }
+.text-blue-500 { color: #3b82f6 !important; }
+.text-blue-600 { color: #2563eb !important; }
+.text-blue-700 { color: #1d4ed8 !important; }
+.text-sky-400 { color: #38bdf8 !important; }
+.text-emerald-500 { color: #10b981 !important; }
+.text-emerald-600 { color: #059669 !important; }
+.text-rose-500 { color: #f43f5e !important; }
+.text-rose-600 { color: #e11d48 !important; }
+.text-amber-500 { color: #f59e0b !important; }
+.text-amber-600 { color: #d97706 !important; }
+
+.app-icon,
+svg.app-icon {
+  width: 1.15em;
+  height: 1.15em;
+  min-width: 1.15em;
+  min-height: 1.15em;
+  max-width: 1.15em;
+  max-height: 1.15em;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: -0.15em;
   fill: currentColor;
 }
 

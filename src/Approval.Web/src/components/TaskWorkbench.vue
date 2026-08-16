@@ -800,34 +800,59 @@ onUnmounted(() => {
 .nav-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .company-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 3px 10px;
+  gap: 5px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0 8px;
+  height: 26px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11.5px;
   color: #334155;
+  white-space: nowrap;
+}
+
+.company-badge svg {
+  width: 13.5px !important;
+  height: 13.5px !important;
+  color: #2563eb;
+  flex-shrink: 0;
 }
 
 .icon-nav-btn {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  padding: 5px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 0;
   border-radius: 4px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.icon-nav-btn svg {
+  width: 13.5px !important;
+  height: 13.5px !important;
+  color: #475569;
 }
 
 .icon-nav-btn:hover {
-  background: #e2e8f0;
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.icon-nav-btn:hover svg {
+  color: #2563eb;
 }
 
 .notif-badge {
@@ -847,18 +872,27 @@ onUnmounted(() => {
 }
 
 .user-selector {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 5px;
+}
+
+.user-selector label {
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .user-selector select {
-  padding: 3px 8px;
+  height: 26px;
+  padding: 0 8px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
-  font-size: 12px;
-  background: #fff;
+  font-size: 11.5px;
+  background: #ffffff;
+  color: #1e293b;
+  outline: none;
 }
 
 /* 快捷发起单据审批条 */

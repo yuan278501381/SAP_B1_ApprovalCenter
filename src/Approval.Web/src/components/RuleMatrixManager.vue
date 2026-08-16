@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api, { API_BASE } from '../config/request'
+import api from '../config/request'
 import { appConfig } from '../config'
 import {
   Plus,

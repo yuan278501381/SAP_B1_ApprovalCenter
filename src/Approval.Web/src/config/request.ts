@@ -1,6 +1,5 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosError } from 'axios'
-import { appConfig } from './index'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
-import api, { API_BASE } from '../config/request'
+import { computed, ref } from 'vue'
+import ChildTableView from './doc/ChildTableView.vue'
+import { useDocData } from '../composables/useDocData'
+import api from '../config/request'
 import {
   appConfig,
   defaultPinnedFields,
@@ -43,8 +45,8 @@ const props = withDefaults(
 // 当前激活的内容 Tab (默认第一个子表或主表属性)
 const activeDocTab = ref<string>('tab_table_0')
 
-const metaData = ref<any>(null)
-const loadingMeta = ref(false)
+// const metaData = ref<any>(null)
+// const loadingMeta = ref(false)
 const searchUdf = ref('')
 const showSystemFields = ref(false)
 
@@ -287,233 +289,21 @@ const loadTieredLayoutFromServer = async () => {
   } catch {}
 }
 
-// 异步加载 SAP 真实元数据 (CUFD / UFD1 / RTable / OSLP / OCTG / OHEM)
-const loadObjectMetadata = async () => {
-  const obj = props.objectCode || parsedData.value?.Object || 'CHORDR'
-  loadingMeta.value = true
-  try {
-    const res = await api.get(`/metadata/objects/${obj}`, {
-      params: { companyId: props.companyId || 'DB_KCC' }
-    })
-    metaData.value = res.data.data
-  } catch {
-    metaData.value = null
-  } finally {
-    loadingMeta.value = false
-  }
-}
 
-let currentLoadedObject = ''
-
-const initMetadataAndLayout = async (force = false) => {
-  const obj = props.objectCode || parsedData.value?.Object || 'CHORDR'
-  if (!force && currentLoadedObject === obj && metaData.value) {
-    return
-  }
-  currentLoadedObject = obj
-  await Promise.all([
-    loadObjectMetadata(),
-    loadTieredLayoutFromServer()
-  ])
-}
-
-onMounted(() => {
-  initMetadataAndLayout()
-})
-
-watch(() => props.objectCode, () => {
-  initMetadataAndLayout(true)
-})
-
-// 默认隐藏的 UDO 底层技术元数据与冗余审计字段
-const DEFAULT_HIDDEN_FIELDS = [
-  'odata.metadata', 'Period', 'Instance', 'Series', 'Handwrtten',
-  'RequestStatus', 'Status', 'Canceled', 'Object', 'LogInst',
-  'UserSign', 'UserSign2', 'Transfered', 'CreateDate', 'CreateTime',
-  'UpdateDate', 'UpdateTime', 'DataSource', 'NaturalPer', 'DPPStatus',
-  'DocTime', 'DocDate', 'DocDueDate', 'TaxDate', 'DocEntry', 'DocNum', 'EncryptIV',
-  'U_PriceMode', 'PriceMode'
-]
-
-const childTechColumns = new Set(['DocEntry', 'EncryptIV', 'LogInst', 'Object', 'VisOrder'])
-
-// 常见标准系统字段翻译字典（兜底基准）
-const SYSTEM_FIELDS_DICT: Record<string, string> = {
-  DocEntry: '单据内部标识 (DocEntry)',
-  DocNum: '单据编号 (DocNum)',
-  CardCode: '业务伙伴/客户代码',
-  U_CardCode: '业务伙伴/客户代码',
-  CardName: '业务伙伴/客户名称',
-  U_CardName: '业务伙伴/客户名称',
-  DocDate: '过账日期',
-  U_DocDate: '过账日期',
-  DocDueDate: '交货/到期日',
-  U_DocDueDate: '交货/到期日',
-  TaxDate: '单据日期',
-  U_TaxDate: '单据日期',
-  DocTotal: '单据总金额',
-  U_DocTotal: '单据总金额',
-  DocCur: '结算币种',
-  U_DocCur: '结算币种',
-  Comments: '单据备注',
-  U_Comments: '单据备注',
-  Creator: '制单人工号',
-  UserSign: '操作员标识',
-  CreateDate: '创建日期',
-  CreateTime: '创建时间',
-  UpdateDate: '更新日期',
-  UpdateTime: '更新时间',
-  Status: '单据状态',
-  Canceled: '是否作废',
-  Object: '业务对象代码',
-  U_SoType: '销售订单类型',
-  U_SlpCode: '销售员',
-  U_GroupNum: '付款条件',
-  U_saleass: '业务助理',
-  U_PAGREQ: '纸箱要求',
-  U_Close: '关闭行',
-  LineCls: '关闭行'
-}
-
-// 格式化字段中文标签
-const getFieldLabel = (key: string, childTableId?: string): string => {
-  if (childTableId && metaData.value?.childTableFields) {
-    const childMap = metaData.value.childTableFields[childTableId]
-    if (childMap) {
-      if (childMap[key]?.description) return childMap[key].description
-      const stripped = key.startsWith('U_') ? key.substring(2) : key
-      if (childMap[stripped]?.description) return childMap[stripped].description
-    }
-  }
-
-  if (metaData.value?.headerFields) {
-    if (metaData.value.headerFields[key]?.description) return metaData.value.headerFields[key].description
-    const stripped = key.startsWith('U_') ? key.substring(2) : key
-    if (metaData.value.headerFields[stripped]?.description) return metaData.value.headerFields[stripped].description
-  }
-
-  if (SYSTEM_FIELDS_DICT[key]) return SYSTEM_FIELDS_DICT[key]
-  const stripped = key.startsWith('U_') ? key.substring(2) : key
-  if (SYSTEM_FIELDS_DICT[stripped]) return SYSTEM_FIELDS_DICT[stripped]
-
-  return key
-}
-
-// 格式化字段值
-const formatFieldValue = (key: string, val: any, childTableId?: string): { display: string; isTranslated: boolean; rawVal: any } => {
-  if (val === null || val === undefined || val === '') return { display: '-', isTranslated: false, rawVal: val }
-
-  const strVal = String(val).trim()
-  let validMap: Record<string, string> | null = null
-
-  if (childTableId && metaData.value?.childTableFields) {
-    const childMap = metaData.value.childTableFields[childTableId]
-    const stripped = key.startsWith('U_') ? key.substring(2) : key
-    validMap = childMap?.[key]?.validValues || childMap?.[stripped]?.validValues || null
-  }
-  
-  if (!validMap && metaData.value?.headerFields) {
-    const stripped = key.startsWith('U_') ? key.substring(2) : key
-    validMap = metaData.value.headerFields?.[key]?.validValues || metaData.value.headerFields?.[stripped]?.validValues || null
-  }
-
-  if (!validMap && metaData.value?.childTableFields) {
-    const stripped = key.startsWith('U_') ? key.substring(2) : key
-    for (const cMap of Object.values(metaData.value.childTableFields) as any[]) {
-      if (cMap?.[key]?.validValues && Object.keys(cMap[key].validValues).length > 0) {
-        validMap = cMap[key].validValues
-        break
-      }
-      if (cMap?.[stripped]?.validValues && Object.keys(cMap[stripped].validValues).length > 0) {
-        validMap = cMap[stripped].validValues
-        break
-      }
-    }
-  }
-
-  // 4. 若仍未匹配，针对 ExpnsCode / SlpCode / GroupNum / VatGroup 等包含性命名字段进行全元数据字典回退匹配
-  if (!validMap && metaData.value) {
-    const cleanKey = key.startsWith('U_') ? key.substring(2) : key
-    const allFields = [
-      ...Object.entries(metaData.value.headerFields || {}),
-      ...Object.values(metaData.value.childTableFields || {}).flatMap(m => Object.entries(m || {}))
-    ]
-    for (const [fName, fMeta] of allFields) {
-      if (fMeta?.validValues && Object.keys(fMeta.validValues).length > 0) {
-        const cleanFName = fName.startsWith('U_') ? fName.substring(2) : fName
-        if (
-          (cleanKey.includes('ExpnsCode') && cleanFName.includes('ExpnsCode')) ||
-          (cleanKey.includes('SlpCode') && cleanFName.includes('SlpCode')) ||
-          (cleanKey.includes('GroupNum') && cleanFName.includes('GroupNum')) ||
-          (cleanKey.includes('VatGroup') && cleanFName.includes('VatGroup'))
-        ) {
-          validMap = fMeta.validValues
-          break
-        }
-      }
-    }
-  }
-
-  const effMode = getFieldEffectiveDisplayMode(key)
-
-  if (validMap && validMap[strVal]) {
-    const desc = validMap[strVal]
-    let display = `${desc} (${strVal})`
-    if (effMode === 'NameOnly') {
-      display = desc
-    } else if (effMode === 'CodeOnly') {
-      display = strVal
-    } else {
-      display = `${desc} (${strVal})`
-    }
-    return {
-      display,
-      isTranslated: true,
-      rawVal: val
-    }
-  }
-
-  if (key === 'U_Close' || key === 'LineCls') {
-    const isY = strVal.toUpperCase() === 'Y'
-    const desc = isY ? '是' : '否'
-    const code = isY ? 'Y' : 'N'
-    let display = `${desc} (${code})`
-    if (effMode === 'NameOnly') {
-      display = desc
-    } else if (effMode === 'CodeOnly') {
-      display = code
-    } else {
-      display = `${desc} (${code})`
-    }
-    return { display, isTranslated: true, rawVal: val }
-  }
-
-  const lKey = key.toLowerCase()
-  if (lKey.includes('total') || lKey.includes('price') || lKey.includes('vat') || lKey.includes('basicp') || lKey.includes('amount') || lKey === 'doctotal') {
-    const num = parseFloat(strVal)
-    if (!isNaN(num)) {
-      return {
-        display: currencySymbol.value + ' ' + num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
-        isTranslated: false,
-        rawVal: val
-      }
-    }
-  }
-
-  if (lKey.includes('rate') || lKey.includes('percent')) {
-    const num = parseFloat(strVal)
-    if (!isNaN(num)) {
-      return { display: String(num), isTranslated: false, rawVal: val }
-    }
-  }
-
-  if (lKey.includes('date') && typeof strVal === 'string' && strVal.includes('T')) {
-    return { display: strVal.split('T')[0], isTranslated: false, rawVal: val }
-  }
-
-  return { display: String(val), isTranslated: false, rawVal: val }
-}
-
+const {
+  metaData,
+  DEFAULT_HIDDEN_FIELDS,
+  childTechColumns,
+  getFieldLabel,
+  formatFieldValue
+} = useDocData(
+  computed(() => props.objectCode),
+  computed(() => props.companyId),
+  parsedData,
+  loadTieredLayoutFromServer,
+  getFieldEffectiveDisplayMode,
+  currencySymbol
+)
 // 提取顶部概览卡片动态钉选字段列表
 
 // 针对草稿与财务日记账分录的智能识别与借贷平衡预计算
@@ -1490,55 +1280,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
       <!-- 表格内容主体 (Sticky 表头 + 虚拟沉浸式滚动) -->
       <div class="table-viewport-wrapper">
         <template v-for="(c, cIdx) in processedCollections" :key="c.key">
-          <div v-if="activeDocTab === ('tab_table_' + cIdx)" class="collection-table-box">
-            <div class="table-scroll-container">
-              <table class="modern-grid-table" :class="['density-' + tableDensity]">
-                <thead>
-                  <tr>
-                    <th class="th-seq-col">#</th>
-                    <th
-                      v-for="col in c.visibleColumns"
-                      :key="col"
-                      :title="col"
-                    >
-                      <div class="th-label-wrap">
-                        <span>{{ c.columnLabels[col] || col }}</span>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(r, rowIdx) in c.processedRows" :key="r.rIdx" class="grid-row">
-                    <td class="td-seq-col font-mono">{{ rowIdx + 1 }}</td>
-                    <td
-                      v-for="col in c.visibleColumns"
-                      :key="col"
-                      :class="[
-                        r.cells[col]?.isNum ? 'align-right font-mono' : '',
-                        r.cells[col]?.isItemCode ? 'font-mono font-bold text-blue-700' : '',
-                        r.cells[col]?.isClosed ? 'status-cell-closed' : ''
-                      ]"
-                    >
-                      <span
-                        v-if="r.cells[col]?.isTranslated"
-                        class="cell-translated-badge"
-                      >
-                        {{ r.cells[col]?.display }}
-                      </span>
-                      <span v-else>
-                        {{ r.cells[col]?.display }}
-                      </span>
-                    </td>
-                  </tr>
-                  <tr v-if="c.processedRows.length === 0" class="empty-table-row">
-                    <td :colspan="c.visibleColumns.length + 1" class="text-center py-8 text-slate-400">
-                      未匹配到任何明细行数据
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <ChildTableView v-if="activeDocTab === ('tab_table_' + cIdx)" :collection="c" :tableDensity="tableDensity" />
         </template>
 
         <!-- 对象主表属性网格 -->

@@ -10,6 +10,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
 using Xunit;
 
 namespace Approval.Domain.Tests;
@@ -105,6 +106,9 @@ public class RemainingCoverageBoosterTests
             await Task.Delay(100, cts.Token);
             await bgService.StopAsync(CancellationToken.None);
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException ex) 
+        { 
+            Log.Warning(ex, "后台服务被取消");
+        }
     }
 }

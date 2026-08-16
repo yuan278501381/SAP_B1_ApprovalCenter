@@ -55,30 +55,35 @@ public class WorkflowInstance
 
     public void MarkSuperseded(DateTime finishedAt)
     {
+        if (Status != WorkflowStatus.Running) throw new InvalidOperationException($"实例状态 {Status} 不允许此操作");
         Status = WorkflowStatus.Superceded;
         FinishedAt = finishedAt;
     }
 
     public void MarkRejected(DateTime finishedAt)
     {
+        if (Status != WorkflowStatus.Running) throw new InvalidOperationException($"实例状态 {Status} 不允许此操作");
         Status = WorkflowStatus.Rejected;
         FinishedAt = finishedAt;
     }
 
     public void MarkReturned(DateTime finishedAt)
     {
+        if (Status != WorkflowStatus.Running) throw new InvalidOperationException($"实例状态 {Status} 不允许此操作");
         Status = WorkflowStatus.Returned;
         FinishedAt = finishedAt;
     }
 
     public void MarkApproved(DateTime finishedAt)
     {
+        if (Status != WorkflowStatus.Running) throw new InvalidOperationException($"实例状态 {Status} 不允许此操作");
         Status = WorkflowStatus.Approved;
         FinishedAt = finishedAt;
     }
 
     public void MarkCancelled(DateTime finishedAt)
     {
+        if (Status != WorkflowStatus.Running) throw new InvalidOperationException($"实例状态 {Status} 不允许此操作");
         Status = WorkflowStatus.Cancelled;
         FinishedAt = finishedAt;
     }

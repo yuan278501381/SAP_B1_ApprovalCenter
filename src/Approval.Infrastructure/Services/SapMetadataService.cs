@@ -872,6 +872,7 @@ public class SapMetadataService : ISapMetadataService
             var tabs = new List<FormFolderTabDto>();
             var headerFields = new List<FormItemFieldDto>();
             var qualitySpecs = new List<FormItemFieldDto>();
+            var matrixCols = new List<FormMatrixColumnDto>();
             var linkedObjs = new Dictionary<string, FormCflLinkDto>(StringComparer.OrdinalIgnoreCase);
             var dropdowns = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -942,6 +943,37 @@ public class SapMetadataService : ISapMetadataService
                             {
                                 dropdowns[alias] = dict;
                                 if (!alias.StartsWith("U_")) dropdowns["U_" + alias] = dict;
+                            }
+                        }
+                    }
+
+                    // 2.4 提取 Matrix / Grid 表格控件 (type="127"，如 u50 表格) 的物理列顺序、绑定字段与列宽
+                    var mIndex = 0;
+                    foreach (var mItem in xDoc.Descendants("item").Where(x => (string?)x.Attribute("type") == "127"))
+                    {
+                        var specific = mItem.Descendants("specific").FirstOrDefault();
+                        if (specific != null)
+                        {
+                            foreach (var colNode in specific.Descendants("column"))
+                            {
+                                var colUid = (string?)colNode.Attribute("uid") ?? "";
+                                var colAlias = (string?)colNode.Descendants("databind").FirstOrDefault()?.Attribute("alias")
+                                               ?? (string?)colNode.Attribute("alias")
+                                               ?? (string?)colNode.Attribute("val_on")
+                                               ?? colUid;
+
+                                var colTitle = (string?)colNode.Attribute("title")
+                                               ?? (string?)colNode.Attribute("description")
+                                               ?? (string?)colNode.Attribute("caption")
+                                               ?? colAlias;
+
+                                int.TryParse((string?)colNode.Attribute("width"), out var colWidth);
+                                var isVis = (string?)colNode.Attribute("visible") != "0" && colWidth > 0;
+
+                                if (!string.IsNullOrWhiteSpace(colAlias) && colAlias != "0" && colAlias != "#")
+                                {
+                                    matrixCols.Add(new FormMatrixColumnDto(colUid, colAlias, colTitle.Trim(), colWidth, isVis, mIndex++));
+                                }
                             }
                         }
                     }
@@ -1018,7 +1050,8 @@ public class SapMetadataService : ISapMetadataService
                 FormHeight = fHeight,
                 Tabs = tabs,
                 HeaderFields = headerFields.OrderBy(x => x.Top).ThenBy(x => x.Left).ToList(),
-                QualitySpecsFields = qualitySpecs.OrderBy(x => x.Top).ToList(),
+                QualitySpecsFields = qualitySpecs.OrderBy(x => x.Top).ThenBy(x => x.Left).ToList(),
+                MatrixColumns = matrixCols,
                 LinkedObjects = linkedObjs,
                 Dropdowns = dropdowns
             };

@@ -350,6 +350,8 @@ const QUALITY_SPECS_KEYS = [
   'U_COVERPAPER', 'U_PAGREQ', 'U_FREIGHT', 'U_DELIVER', 'U_MORECHECK', 'U_COLORCHECK'
 ]
 
+const isSpecsSidebarOpen = ref(true)
+
 const qualitySpecsFields = computed(() => {
   const data = parsedData.value
   if (!data) return []
@@ -552,7 +554,19 @@ const processedCollections = computed(() => {
         }
       })
 
-      const preferred = ['LineId', 'U_Close', 'LineCls', 'U_ItemCode', 'ItemCode', 'U_ItemName', 'ItemName', 'U_Quantity', 'Quantity', 'U_PriceAfVat', 'U_PriceBfDisc', 'Price', 'U_LineTotal', 'U_GTotal', 'LineTotal', 'U_length', 'U_basicp', 'U_season', 'U_Memo']
+      const preferred = [
+        'U_ItemCode', 'ItemCode',
+        'U_ItemName', 'ItemName',
+        'U_FrgnName', 'FrgnName',
+        'U_Quantity', 'Quantity',
+        'U_PriceBfDisc', 'PriceBfDisc',
+        'U_PriceAfVat', 'PriceAfVat',
+        'U_VatGroup', 'VatGroup',
+        'U_stdlen', 'U_stdmou', 'U_length', 'U_unit',
+        'U_basicp', 'U_basicdisc', 'U_addp', 'U_adddisc',
+        'U_LineTotal', 'LineTotal', 'U_GTotal', 'GTotal',
+        'LineId', 'U_Close', 'LineCls', 'U_season', 'U_Memo'
+      ]
       const defaultSortedCols = Array.from(allColsSet).sort((a, b) => {
         const idxA = preferred.indexOf(a)
         const idxB = preferred.indexOf(b)
@@ -1430,6 +1444,33 @@ const openTransferDrawer = (tabKey: string = 'header') => {
           </div>
         </div>
       </div>
+
+      <!-- 2.2 SAP [@Ch_Udo_Form] 原生右侧工艺质量与物性标准专区侧边栏 -->
+      <div v-if="qualitySpecsFields.length > 0" class="quality-specs-sidebar" :class="[isSpecsSidebarOpen ? 'open' : 'collapsed']">
+        <div class="specs-sidebar-header" @click="isSpecsSidebarOpen = !isSpecsSidebarOpen">
+          <div class="specs-title-row">
+            <ShieldCheck class="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
+            <span class="specs-title">工艺与物性标准</span>
+            <span class="specs-badge-count">{{ qualitySpecsFields.length }}</span>
+          </div>
+          <button class="btn-specs-toggle" :title="isSpecsSidebarOpen ? '收起侧边栏' : '展开侧边栏'">
+            <span>{{ isSpecsSidebarOpen ? '收起 ▶' : '展开 ◀' }}</span>
+          </button>
+        </div>
+
+        <div v-show="isSpecsSidebarOpen" class="specs-items-scroll">
+          <div
+            v-for="spec in qualitySpecsFields"
+            :key="spec.key"
+            class="specs-item-row"
+          >
+            <span class="specs-label" :title="spec.key">{{ spec.label }}:</span>
+            <span class="specs-val" :class="[spec.formatted.isTranslated ? 'text-blue-700 font-semibold' : '']" :title="spec.formatted.display">
+              {{ spec.formatted.display }}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 3. 底部多重备注与说明专属收敛便签栏 (按 SAP 原始位置置底，100% 原始换行) -->
@@ -1763,7 +1804,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .doc-viewer-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   min-height: 0;
   width: 100%;
   gap: 8px;
@@ -2018,13 +2059,12 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .doc-body-split-pane {
   display: flex;
   gap: 8px;
-  flex: 1;
-  min-height: 200px;
-  height: 0;
-  overflow: hidden;
+  min-height: 0;
+  height: auto;
+  align-items: stretch;
 }
 
-/* 2.1 一体化表格视窗容器 (Flex 1 自适应填满，高度永远贴合屏幕) */
+/* 2.1 一体化表格视窗容器 (根据数据自适应高度，最大 520px 内部滚动) */
 .table-unified-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -2032,10 +2072,20 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 200px;
-  height: 0;
+  min-height: 0;
+  height: auto;
+  max-height: 520px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.table-viewport-wrapper {
+  flex: 1;
+  min-height: 0;
+  max-height: 470px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 2.2 SAP [@Ch_Udo_Form] 原生右侧工艺质量与物性标准侧边栏 */
@@ -2047,6 +2097,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  max-height: 520px;
   overflow: hidden;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);

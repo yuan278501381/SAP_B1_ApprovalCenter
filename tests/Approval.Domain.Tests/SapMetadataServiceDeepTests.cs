@@ -69,4 +69,20 @@ public class SapMetadataServiceDeepTests : IDisposable
         expMeta.ValidValues.Should().ContainKey("8");
         expMeta.ValidValues!["8"].Should().Be("染色費");
     }
+
+    [Fact]
+    public async Task SapMetadataService_ProbeMatrixStructure()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:ApprovalDbConnection"] = "Server=192.168.134.9,1433;Database=DB_KCC;User Id=sa;Password=123456@a;TrustServerCertificate=True;"
+        }).Build();
+        var service = new SapMetadataService(config, NullLogger<SapMetadataService>.Instance);
+        var result = await service.GetUdoFormLayoutAsync("DB_KCC", "CHORDR", forceRefresh: true);
+        result.Should().NotBeNull();
+        
+        var userSettings = await service.GetUserFormSettingsAsync("DB_KCC", "CHORDR", "admin");
+        userSettings.Should().NotBeNull();
+        userSettings.HasSapSettings.Should().BeTrue();
+    }
 }

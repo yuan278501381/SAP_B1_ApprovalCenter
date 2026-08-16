@@ -64,21 +64,17 @@ const props = defineProps<{
 .collection-table-box {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 0;
   width: 100%;
   background: #ffffff;
   overflow: hidden;
+  min-height: 0;
 }
 
 .table-scroll-container {
-  flex: 1;
-  min-height: 0;
-  height: 0;
   overflow: auto;
   position: relative;
   border-radius: 4px;
+  max-height: 440px;
 }
 
 /* 高可见度极细现代滚动条 */

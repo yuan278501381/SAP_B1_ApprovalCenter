@@ -140,11 +140,21 @@ public record ChUdoFormMetadataResult
     public List<FormFolderTabDto> Tabs { get; init; } = new();
     public List<FormItemFieldDto> HeaderFields { get; init; } = new();
     public List<FormItemFieldDto> QualitySpecsFields { get; init; } = new();
+    public List<FormMatrixColumnDto> MatrixColumns { get; init; } = new();
     public Dictionary<string, FormCflLinkDto> LinkedObjects { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Dictionary<string, string>> Dropdowns { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public record FormFolderTabDto(int PaneId, string Caption, bool Activated);
+
+public record FormMatrixColumnDto(
+    string Uid,
+    string Alias,
+    string Title,
+    int Width,
+    bool Visible,
+    int Index
+);
 
 public record FormItemFieldDto(
     string Uid,

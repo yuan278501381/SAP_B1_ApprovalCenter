@@ -1474,17 +1474,27 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                     </div>
                   </div>
 
+                  <!-- 智能双态 Toggle 按钮：支持一键添加与一键取消，Hover 智能变身 -->
                   <button
                     v-if="!item.isAdded"
-                    class="btn-add-item"
+                    class="btn-toggle-action btn-action-add"
                     @click.stop="transferAddItem(item.key)"
-                    title="添加到右侧显示列表"
+                    title="点击添加至显示列表"
                   >
-                    <Plus class="w-4 h-4 text-blue-600" />
+                    <Plus class="action-icon" />
+                    <span>添加</span>
                   </button>
-                  <span v-else class="badge-added">
-                    <Check class="w-3 h-3 mr-0.5" /> 已显示
-                  </span>
+                  <button
+                    v-else
+                    class="btn-toggle-action btn-action-added"
+                    @click.stop="transferRemoveItem(item.key)"
+                    title="点击从显示列表中取消"
+                  >
+                    <Check class="action-icon icon-check" />
+                    <X class="action-icon icon-remove" />
+                    <span class="label-normal">已显示</span>
+                    <span class="label-hover">取消</span>
+                  </button>
                 </div>
                 <div v-if="transferLeftItems.length === 0" class="empty-list">未匹配到相关字段</div>
               </div>
@@ -1565,7 +1575,7 @@ const openTransferDrawer = (tabKey: string = 'header') => {
                       @click="transferRemoveItem(item.key)"
                       title="从当前显示中移除"
                     >
-                      <Trash2 class="w-4 h-4 text-slate-400 hover:text-rose-600" />
+                      <Trash2 class="delete-icon" />
                     </button>
                   </div>
                 </div>
@@ -2524,10 +2534,12 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .transfer-item {
   display: flex;
   align-items: center;
-  padding: 5px 6px;
+  padding: 5px 8px;
   border: 1px solid #f1f5f9;
-  border-radius: 3px;
+  border-radius: 4px;
   background: #ffffff;
+  min-height: 34px;
+  transition: all 0.15s ease;
 }
 
 .transfer-item:hover {
@@ -2543,14 +2555,24 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 .reorder-grip {
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-right: 4px;
+  gap: 3px;
+  margin-right: 6px;
+  color: #94a3b8;
+  user-select: none;
+}
+
+.reorder-grip svg {
+  width: 13px;
+  height: 13px;
+  color: #94a3b8;
 }
 
 .order-seq {
-  font-size: 9.5px;
-  color: #94a3b8;
-  width: 12px;
+  font-size: 10px;
+  color: #64748b;
+  width: 16px;
+  text-align: right;
+  font-weight: 500;
 }
 
 .item-info {
@@ -2565,7 +2587,8 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 }
 
 .item-label {
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
@@ -2573,36 +2596,84 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 }
 
 .item-key {
-  font-size: 9px;
+  font-size: 9.5px;
   color: #94a3b8;
 }
 
 .item-sample-val {
-  font-size: 9.5px;
+  font-size: 10px;
   color: #64748b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 1px;
 }
 
-.badge-added {
-  font-size: 10px;
-  color: #059669;
-  font-weight: 600;
-  display: flex;
+/* 智能双态 Toggle 按钮系统 (世界级微交互) */
+.btn-toggle-action {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  flex-shrink: 0;
 }
 
-.btn-add-item {
+.btn-toggle-action .action-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* 1. 未添加状态 (添加按钮) */
+.btn-action-add {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 3px;
-  padding: 1px 3px;
-  cursor: pointer;
+  color: #1d4ed8;
 }
 
-.btn-add-item:hover {
+.btn-action-add:hover {
   background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+}
+
+/* 2. 已添加状态 (智能悬浮变身按钮: 默认绿[已显示] / 悬浮红[取消]) */
+.btn-action-added {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.btn-action-added .icon-remove,
+.btn-action-added .label-hover {
+  display: none;
+}
+
+.btn-action-added:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
+}
+
+.btn-action-added:hover .icon-check,
+.btn-action-added:hover .label-normal {
+  display: none;
+}
+
+.btn-action-added:hover .icon-remove,
+.btn-action-added:hover .label-hover {
+  display: inline-flex;
 }
 
 .item-actions {
@@ -2612,22 +2683,54 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 }
 
 .field-mode-select {
-  font-size: 9.5px;
-  padding: 1px 3px;
+  font-size: 10px;
+  height: 22px;
+  padding: 1px 4px;
   border: 1px solid #cbd5e1;
-  border-radius: 2px;
-  background: #ffffff;
+  border-radius: 3px;
+  background: #f8fafc;
   color: #334155;
   cursor: pointer;
   outline: none;
+  transition: all 0.15s ease;
 }
 
+.field-mode-select:hover,
+.field-mode-select:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+}
+
+/* 右侧垃圾桶微型删除按钮 */
 .btn-delete-item {
-  background: transparent;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
   border: none;
-  cursor: pointer;
-  display: flex;
+  background: transparent;
+  color: #94a3b8;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn-delete-item .delete-icon {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.15s ease;
+}
+
+.btn-delete-item:hover {
+  background: #fee2e2;
+  color: #e11d48;
+}
+
+.btn-delete-item:hover .delete-icon {
+  transform: scale(1.1);
 }
 
 .transfer-divider {

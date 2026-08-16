@@ -2300,13 +2300,15 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 }
 
 .transfer-drawer-container {
-  width: 780px;
-  max-width: 92vw;
-  height: 100vh;
+  width: calc(780px / var(--app-font-scale, 1));
+  max-width: calc(92vw / var(--app-font-scale, 1));
+  height: calc(100vh / var(--app-font-scale, 1));
   background: #ffffff;
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  zoom: var(--app-font-scale, 1);
+  transform-origin: top right;
 }
 
 .drawer-header {

@@ -1516,9 +1516,10 @@ onUnmounted(() => {
 .shortcut-card, .modal-card {
   background: #fff;
   border-radius: 8px;
-  width: 440px;
+  width: calc(440px / var(--app-font-scale, 1));
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  zoom: var(--app-font-scale, 1);
 }
 
 .shortcut-header, .modal-header {
@@ -1570,12 +1571,14 @@ onUnmounted(() => {
 }
 
 .notif-drawer-panel {
-  width: 360px;
-  height: 100vh;
+  width: calc(360px / var(--app-font-scale, 1));
+  height: calc(100vh / var(--app-font-scale, 1));
   background: #fff;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
+  zoom: var(--app-font-scale, 1);
+  transform-origin: top right;
 }
 
 .notif-header {

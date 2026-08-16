@@ -93,7 +93,11 @@ body {
    ========================================================================== */
 .tab-view-body,
 .workbench-container,
-.doc-data-viewer-root {
+.doc-data-viewer-root,
+.transfer-drawer-container,
+.notif-drawer-panel,
+.shortcut-card,
+.modal-card {
   zoom: var(--app-font-scale, 1);
   transform-origin: top left;
 }

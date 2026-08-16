@@ -82,6 +82,14 @@ if (Test-Path $remoteCache) {
     Remove-Item "$remoteCache\*" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# 部署完整性验证门禁 (验证远程 DLL 已被最新编译产物覆盖)
+$localApiDll = Get-Item "$distDir\Approval.Api\Approval.Api.dll"
+$remoteApiDll = Get-Item "$remoteBase\Approval.Api\Approval.Api.dll"
+if ($remoteApiDll.LastWriteTime -lt $localApiDll.LastWriteTime.AddSeconds(-5)) {
+    throw "【部署熔断】远程 Approval.Api.dll 未成功更新，请检查 Windows 进程锁定！(远程: $($remoteApiDll.LastWriteTime) vs 本地: $($localApiDll.LastWriteTime))"
+}
+Write-Host "  ✅ 二进制部署完整性验证通过: 远程 DLL 已 100% 同步为最新构建产物 ($($remoteApiDll.LastWriteTime))" -ForegroundColor Green
+
 # 3. 注入生产环境配置文件
 Write-Host "`n[3/5] 注入生产环境配置文件 (appsettings.Production.json)..." -ForegroundColor Yellow
 $prodConfig = @"

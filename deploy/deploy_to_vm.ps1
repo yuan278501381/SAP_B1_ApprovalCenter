@@ -55,21 +55,13 @@ function Exec-WmiCmd([string]$cmdText) {
     return $outParams["ReturnValue"]
 }
 
-# 停止旧服务与进程
+# 停止旧服务与进程 (确保彻底释放二进制 DLL 句柄)
 Write-Host "  停止远程运行中的服务与进程..." -ForegroundColor DarkGray
-Exec-WmiCmd "cmd.exe /c net stop ApprovalPlatformApi >nul 2>&1 & net stop ApprovalPlatformWorker >nul 2>&1 & taskkill /F /T /IM Approval.Api.exe /IM Approval.Worker.exe >nul 2>&1" | Out-Null
+sc.exe \\$TargetIp stop ApprovalPlatformApi 2>&1 | Out-Null
+sc.exe \\$TargetIp stop ApprovalPlatformWorker 2>&1 | Out-Null
 Start-Sleep -Seconds 3
 
-try {
-    $secPass = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
-    $cred = New-Object System.Management.Automation.PSCredential($AdminUser, $secPass)
-    $runningProcs = Get-CimInstance -ClassName Win32_Process -ComputerName $TargetIp -Credential $cred -Filter "Name LIKE 'Approval%'" -ErrorAction SilentlyContinue
-    if ($runningProcs) {
-        foreach ($p in $runningProcs) {
-            Invoke-CimMethod -InputObject $p -MethodName Terminate | Out-Null
-        }
-    }
-} catch {}
+taskkill.exe /S $TargetIp /U $AdminUser /P $AdminPassword /F /IM Approval.Api.exe /IM Approval.Worker.exe /T 2>&1 | Out-Null
 Start-Sleep -Seconds 2
 
 # 极速增量并发同步 Api 与 Worker (使用 robocopy 代替单线程慢速 Copy-Item)
@@ -79,12 +71,15 @@ robocopy "$distDir\Approval.Api" "$remoteBase\Approval.Api" /MIR /NP /NFL /NDO /
 Write-Host "  极速增量同步 Worker 文件至 $remoteBase\Approval.Worker..." -ForegroundColor DarkGray
 robocopy "$distDir\Approval.Worker" "$remoteBase\Approval.Worker" /MIR /NP /NFL /NDO /R:1 /W:1 | Out-Null
 
-# 强制同步最新 wwwroot 静态产物 (彻底消除旧版缓存与句柄锁死)
-Write-Host "  强制镜像同步前端静态产物至 $remoteBase\Approval.Api\wwwroot..." -ForegroundColor DarkGray
 $remoteWwwroot = "$remoteBase\Approval.Api\wwwroot"
 if (Test-Path "$distDir\Approval.Api\wwwroot") {
-    # 先使用 Copy-Item 强行覆盖 assets 目录下的所有文件
     Copy-Item -Path "$distDir\Approval.Api\wwwroot\*" -Destination "$remoteWwwroot" -Recurse -Force
+}
+
+# 清空远程元数据落盘缓存以确保获取最新的 SAP 动态字典映射
+$remoteCache = "$remoteBase\Approval.Api\metadata_cache"
+if (Test-Path $remoteCache) {
+    Remove-Item "$remoteCache\*" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # 3. 注入生产环境配置文件

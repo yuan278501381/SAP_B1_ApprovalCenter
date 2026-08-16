@@ -445,6 +445,29 @@ const formatFieldValue = (key: string, val: any, childTableId?: string): { displ
     }
   }
 
+  // 4. 若仍未匹配，针对 ExpnsCode / SlpCode / GroupNum / VatGroup 等包含性命名字段进行全元数据字典回退匹配
+  if (!validMap && metaData.value) {
+    const cleanKey = key.startsWith('U_') ? key.substring(2) : key
+    const allFields = [
+      ...Object.entries(metaData.value.headerFields || {}),
+      ...Object.values(metaData.value.childTableFields || {}).flatMap(m => Object.entries(m || {}))
+    ]
+    for (const [fName, fMeta] of allFields) {
+      if (fMeta?.validValues && Object.keys(fMeta.validValues).length > 0) {
+        const cleanFName = fName.startsWith('U_') ? fName.substring(2) : fName
+        if (
+          (cleanKey.includes('ExpnsCode') && cleanFName.includes('ExpnsCode')) ||
+          (cleanKey.includes('SlpCode') && cleanFName.includes('SlpCode')) ||
+          (cleanKey.includes('GroupNum') && cleanFName.includes('GroupNum')) ||
+          (cleanKey.includes('VatGroup') && cleanFName.includes('VatGroup'))
+        ) {
+          validMap = fMeta.validValues
+          break
+        }
+      }
+    }
+  }
+
   const effMode = getFieldEffectiveDisplayMode(key)
 
   if (validMap && validMap[strVal]) {
@@ -1237,6 +1260,18 @@ const isCodeNameField = (key: string, tableKey?: string): boolean => {
     for (const cMap of Object.values(metaData.value.childTableFields) as any[]) {
       if (cMap?.[key]?.validValues && Object.keys(cMap[key].validValues).length > 0) return true
       if (cMap?.[stripped]?.validValues && Object.keys(cMap[stripped].validValues).length > 0) return true
+    }
+  }
+
+  if (metaData.value) {
+    const cleanKey = key.startsWith('U_') ? key.substring(2) : key
+    if (
+      cleanKey.includes('ExpnsCode') ||
+      cleanKey.includes('SlpCode') ||
+      cleanKey.includes('GroupNum') ||
+      cleanKey.includes('VatGroup')
+    ) {
+      return true
     }
   }
 

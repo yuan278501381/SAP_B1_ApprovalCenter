@@ -609,42 +609,37 @@ public class SapMetadataService : ISapMetadataService
     private static void AttachValidValue(
         Dictionary<string, FieldMetaInfo> headerFields,
         Dictionary<string, Dictionary<string, FieldMetaInfo>> childTableFields,
-        string key,
+        string pattern,
         string code,
         string name)
     {
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name)) return;
 
         // 1. 表头字段匹配
-        AttachToDict(headerFields, key, code, name);
+        AttachToDict(headerFields, pattern, code, name);
 
         // 2. 子表字段匹配
         foreach (var cMap in childTableFields.Values)
         {
-            AttachToDict(cMap, key, code, name);
+            AttachToDict(cMap, pattern, code, name);
         }
     }
 
-    private static void AttachToDict(Dictionary<string, FieldMetaInfo> fields, string key, string code, string name)
+    private static void AttachToDict(Dictionary<string, FieldMetaInfo> fields, string pattern, string code, string name)
     {
-        var targetKey = key;
-        if (!fields.TryGetValue(key, out var meta))
-        {
-            if (fields.TryGetValue("U_" + key, out var uMeta))
-            {
-                meta = uMeta;
-                targetKey = "U_" + key;
-            }
-            else if (key.StartsWith("U_") && fields.TryGetValue(key.Substring(2), out var sMeta))
-            {
-                meta = sMeta;
-                targetKey = key.Substring(2);
-            }
-        }
+        var cleanPattern = pattern.StartsWith("U_") ? pattern.Substring(2) : pattern;
 
-        if (meta != null && meta.ValidValues != null)
+        foreach (var (fKey, meta) in fields)
         {
-            meta.ValidValues[code] = name;
+            var cleanKey = fKey.StartsWith("U_") ? fKey.Substring(2) : fKey;
+
+            if (fKey.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
+                cleanKey.Equals(cleanPattern, StringComparison.OrdinalIgnoreCase) ||
+                cleanKey.Contains(cleanPattern, StringComparison.OrdinalIgnoreCase))
+            {
+                meta.ValidValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                meta.ValidValues[code] = name;
+            }
         }
     }
 

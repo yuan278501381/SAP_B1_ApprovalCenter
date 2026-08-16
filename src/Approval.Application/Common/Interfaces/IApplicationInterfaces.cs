@@ -59,12 +59,23 @@ public interface IUserDirectoryService
         CancellationToken ct = default);
 }
 
-public record FieldMetaInfo(
-    string FieldName,
-    string Description,
-    string DataType,
-    Dictionary<string, string>? ValidValues
-);
+public class FieldMetaInfo
+{
+    public string FieldName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string DataType { get; set; } = string.Empty;
+    public Dictionary<string, string>? ValidValues { get; set; }
+
+    public FieldMetaInfo() { }
+
+    public FieldMetaInfo(string fieldName, string description, string dataType, Dictionary<string, string>? validValues)
+    {
+        FieldName = fieldName;
+        Description = description;
+        DataType = dataType;
+        ValidValues = validValues;
+    }
+}
 
 public record ObjectMetadataResult(
     string ObjectCode,

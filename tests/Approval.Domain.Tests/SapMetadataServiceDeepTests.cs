@@ -46,4 +46,23 @@ public class SapMetadataServiceDeepTests : IDisposable
         meta2.Should().NotBeNull();
         meta2.ObjectCode.Should().Be("CHOQUT");
     }
+
+    [Fact]
+    public async Task SapMetadataService_LiveDb_ShouldLoadExpenseCodeValidValues()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:ApprovalDbConnection"] = "Server=192.168.134.9,1433;Database=DB_KCC;User Id=sa;Password=123456@a;TrustServerCertificate=True;"
+        }).Build();
+        var service = new SapMetadataService(config, NullLogger<SapMetadataService>.Instance);
+
+        var meta = await service.GetObjectMetadataAsync("DB_KCC", "CHORDR", forceRefresh: true);
+        meta.Should().NotBeNull();
+
+        var ch3 = meta.ChildTableFields["@CH_ORDR_3"];
+        var expMeta = ch3["U_ExpenseCode"];
+        expMeta.ValidValues.Should().NotBeNull();
+        expMeta.ValidValues.Should().ContainKey("8");
+        expMeta.ValidValues!["8"].Should().Be("染色費");
+    }
 }

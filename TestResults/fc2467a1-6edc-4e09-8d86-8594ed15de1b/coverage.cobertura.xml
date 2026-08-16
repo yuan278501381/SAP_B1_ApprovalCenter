@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.7095999999999999" branch-rate="0.46740000000000004" version="1.9" timestamp="1786819223" lines-covered="1894" lines-valid="2669" branches-covered="510" branches-valid="1091">
+<coverage line-rate="0.7167" branch-rate="0.483" version="1.9" timestamp="1786841711" lines-covered="1916" lines-valid="2673" branches-covered="528" branches-valid="1093">
   <sources>
     <source>C:\repo\SAP_B1_ApprovalCenter\src\</source>
   </sources>
@@ -3042,7 +3042,7 @@
         </class>
       </classes>
     </package>
-    <package name="Approval.Application" line-rate="0.7959" branch-rate="0.5502" complexity="502">
+    <package name="Approval.Application" line-rate="0.7974" branch-rate="0.5502" complexity="503">
       <classes>
         <class name="Approval.Application.Services.WorkflowEngine" filename="Approval.Application\Services\WorkflowEngine.cs" line-rate="0.8611" branch-rate="0.7419" complexity="64">
           <methods>
@@ -6018,130 +6018,144 @@
             <line number="48" hits="33" branch="False" />
           </lines>
         </class>
-        <class name="Approval.Application.Common.Interfaces.FieldMetaInfo" filename="Approval.Application\Common\Interfaces\IApplicationInterfaces.cs" line-rate="1" branch-rate="1" complexity="5">
+        <class name="Approval.Application.Common.Interfaces.FieldMetaInfo" filename="Approval.Application\Common\Interfaces\IApplicationInterfaces.cs" line-rate="1" branch-rate="1" complexity="6">
           <methods>
             <method name="get_FieldName" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="63" hits="3" branch="False" />
+                <line number="64" hits="687" branch="False" />
               </lines>
             </method>
             <method name="get_Description" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="64" hits="3" branch="False" />
+                <line number="65" hits="687" branch="False" />
               </lines>
             </method>
             <method name="get_DataType" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="65" hits="3" branch="False" />
+                <line number="66" hits="687" branch="False" />
               </lines>
             </method>
             <method name="get_ValidValues" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="66" hits="5" branch="False" />
+                <line number="67" hits="1922" branch="False" />
+              </lines>
+            </method>
+            <method name=".ctor" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="69" hits="6" branch="False" />
               </lines>
             </method>
             <method name=".ctor" signature="(System.String,System.String,System.String,System.Collections.Generic.Dictionary`2&lt;System.String,System.String&gt;)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="62" hits="6" branch="False" />
-                <line number="67" hits="6" branch="False" />
+                <line number="71" hits="171" branch="False" />
+                <line number="73" hits="171" branch="False" />
+                <line number="74" hits="171" branch="False" />
+                <line number="75" hits="171" branch="False" />
+                <line number="76" hits="171" branch="False" />
+                <line number="77" hits="171" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="63" hits="3" branch="False" />
-            <line number="64" hits="3" branch="False" />
-            <line number="65" hits="3" branch="False" />
-            <line number="66" hits="5" branch="False" />
-            <line number="62" hits="6" branch="False" />
-            <line number="67" hits="6" branch="False" />
+            <line number="64" hits="687" branch="False" />
+            <line number="65" hits="687" branch="False" />
+            <line number="66" hits="687" branch="False" />
+            <line number="67" hits="1922" branch="False" />
+            <line number="69" hits="6" branch="False" />
+            <line number="71" hits="171" branch="False" />
+            <line number="73" hits="171" branch="False" />
+            <line number="74" hits="171" branch="False" />
+            <line number="75" hits="171" branch="False" />
+            <line number="76" hits="171" branch="False" />
+            <line number="77" hits="171" branch="False" />
           </lines>
         </class>
         <class name="Approval.Application.Common.Interfaces.ObjectMetadataResult" filename="Approval.Application\Common\Interfaces\IApplicationInterfaces.cs" line-rate="1" branch-rate="1" complexity="7">
           <methods>
             <method name="get_ObjectCode" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="70" hits="39" branch="False" />
+                <line number="81" hits="41" branch="False" />
               </lines>
             </method>
             <method name="get_TableName" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="71" hits="38" branch="False" />
+                <line number="82" hits="40" branch="False" />
               </lines>
             </method>
             <method name="get_HeaderFields" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="72" hits="37" branch="False" />
+                <line number="83" hits="39" branch="False" />
               </lines>
             </method>
             <method name="get_ChildTableFields" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="73" hits="39" branch="False" />
+                <line number="84" hits="42" branch="False" />
               </lines>
             </method>
             <method name="get_ChildTableDescriptions" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="74" hits="49" branch="False" />
+                <line number="85" hits="51" branch="False" />
               </lines>
             </method>
             <method name="get_ObjectDescription" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="75" hits="49" branch="False" />
+                <line number="86" hits="51" branch="False" />
               </lines>
             </method>
             <method name=".ctor" signature="(System.String,System.String,System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;,System.Collections.Generic.Dictionary`2&lt;System.String,System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;&gt;,System.Collections.Generic.Dictionary`2&lt;System.String,System.String&gt;,System.String)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="69" hits="37" branch="False" />
-                <line number="76" hits="37" branch="False" />
+                <line number="80" hits="41" branch="False" />
+                <line number="87" hits="41" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="70" hits="39" branch="False" />
-            <line number="71" hits="38" branch="False" />
-            <line number="72" hits="37" branch="False" />
-            <line number="73" hits="39" branch="False" />
-            <line number="74" hits="49" branch="False" />
-            <line number="75" hits="49" branch="False" />
-            <line number="69" hits="37" branch="False" />
-            <line number="76" hits="37" branch="False" />
+            <line number="81" hits="41" branch="False" />
+            <line number="82" hits="40" branch="False" />
+            <line number="83" hits="39" branch="False" />
+            <line number="84" hits="42" branch="False" />
+            <line number="85" hits="51" branch="False" />
+            <line number="86" hits="51" branch="False" />
+            <line number="80" hits="41" branch="False" />
+            <line number="87" hits="41" branch="False" />
           </lines>
         </class>
         <class name="Approval.Application.Common.Interfaces.CompanyInfoResult" filename="Approval.Application\Common\Interfaces\IApplicationInterfaces.cs" line-rate="0.6666" branch-rate="1" complexity="5">
           <methods>
             <method name="get_CompanyId" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="79" hits="1" branch="False" />
+                <line number="90" hits="1" branch="False" />
               </lines>
             </method>
             <method name="get_CompanyName" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="80" hits="1" branch="False" />
+                <line number="91" hits="1" branch="False" />
               </lines>
             </method>
             <method name="get_Address" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="81" hits="0" branch="False" />
+                <line number="92" hits="0" branch="False" />
               </lines>
             </method>
             <method name="get_Phone" signature="()" line-rate="0" branch-rate="1" complexity="1">
               <lines>
-                <line number="82" hits="0" branch="False" />
+                <line number="93" hits="0" branch="False" />
               </lines>
             </method>
             <method name=".ctor" signature="(System.String,System.String,System.String,System.String)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="78" hits="1" branch="False" />
-                <line number="83" hits="1" branch="False" />
+                <line number="89" hits="1" branch="False" />
+                <line number="94" hits="1" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="79" hits="1" branch="False" />
-            <line number="80" hits="1" branch="False" />
-            <line number="81" hits="0" branch="False" />
-            <line number="82" hits="0" branch="False" />
-            <line number="78" hits="1" branch="False" />
-            <line number="83" hits="1" branch="False" />
+            <line number="90" hits="1" branch="False" />
+            <line number="91" hits="1" branch="False" />
+            <line number="92" hits="0" branch="False" />
+            <line number="93" hits="0" branch="False" />
+            <line number="89" hits="1" branch="False" />
+            <line number="94" hits="1" branch="False" />
           </lines>
         </class>
         <class name="Approval.Application.Common.Helpers.SnapshotCompressionHelper" filename="Approval.Application\Common\Helpers\SnapshotCompressionHelper.cs" line-rate="0.7777" branch-rate="0.8" complexity="10">
@@ -7582,7 +7596,7 @@
         </class>
       </classes>
     </package>
-    <package name="Approval.Infrastructure" line-rate="0.8640000000000001" branch-rate="0.5864" complexity="195">
+    <package name="Approval.Infrastructure" line-rate="0.8948" branch-rate="0.7111" complexity="197">
       <classes>
         <class name="Approval.Infrastructure.Services.DbInitializer/&lt;SeedAsync&gt;d__0" filename="Approval.Infrastructure\Services\DbInitializer.cs" line-rate="1" branch-rate="0.5" complexity="2">
           <methods>
@@ -7854,96 +7868,99 @@
             <line number="157" hits="4" branch="False" />
           </lines>
         </class>
-        <class name="Approval.Infrastructure.Services.SapMetadataService" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0.6805" branch-rate="0.1363" complexity="24">
+        <class name="Approval.Infrastructure.Services.SapMetadataService" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0.9577" branch-rate="0.875" complexity="26">
           <methods>
             <method name="GetDiskCachePath" signature="(System.String,System.String)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="201" hits="36" branch="False" />
-                <line number="202" hits="36" branch="False" />
+                <line number="201" hits="40" branch="False" />
+                <line number="202" hits="40" branch="False" />
               </lines>
             </method>
-            <method name="AttachValidValue" signature="(System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;,System.Collections.Generic.Dictionary`2&lt;System.String,System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;&gt;,System.String,System.String,System.String)" line-rate="0" branch-rate="0" complexity="6">
+            <method name="AttachValidValue" signature="(System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;,System.Collections.Generic.Dictionary`2&lt;System.String,System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;&gt;,System.String,System.String,System.String)" line-rate="1" branch-rate="0.6666" complexity="6">
               <lines>
-                <line number="616" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="616" hits="245" branch="True" condition-coverage="50% (2/4)">
                   <conditions>
-                    <condition number="6" type="jump" coverage="0%" />
-                    <condition number="15" type="jump" coverage="0%" />
+                    <condition number="6" type="jump" coverage="50%" />
+                    <condition number="15" type="jump" coverage="50%" />
                   </conditions>
                 </line>
-                <line number="619" hits="0" branch="False" />
-                <line number="622" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="619" hits="245" branch="False" />
+                <line number="622" hits="1470" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
-                    <condition number="65" type="jump" coverage="0%" />
+                    <condition number="65" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="624" hits="0" branch="False" />
-                <line number="626" hits="0" branch="False" />
+                <line number="624" hits="490" branch="False" />
+                <line number="626" hits="245" branch="False" />
               </lines>
             </method>
-            <method name="AttachToDict" signature="(System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;,System.String,System.String,System.String)" line-rate="0" branch-rate="0" complexity="12">
+            <method name="AttachToDict" signature="(System.Collections.Generic.Dictionary`2&lt;System.String,Approval.Application.Common.Interfaces.FieldMetaInfo&gt;,System.String,System.String,System.String)" line-rate="1" branch-rate="0.9285" complexity="14">
               <lines>
-                <line number="631" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="630" hits="735" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
-                    <condition number="9" type="jump" coverage="0%" />
+                    <condition number="11" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="633" hits="0" branch="True" condition-coverage="0% (0/2)">
+                <line number="632" hits="166110" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
-                    <condition number="30" type="jump" coverage="0%" />
+                    <condition number="171" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="635" hits="0" branch="False" />
-                <line number="636" hits="0" branch="False" />
-                <line number="638" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="634" hits="82320" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
-                    <condition number="59" type="jump" coverage="0%" />
-                    <condition number="76" type="jump" coverage="0%" />
+                    <condition number="73" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="640" hits="0" branch="False" />
-                <line number="641" hits="0" branch="False" />
-                <line number="645" hits="0" branch="True" condition-coverage="0% (0/4)">
+                <line number="636" hits="82320" branch="True" condition-coverage="100% (6/6)">
                   <conditions>
-                    <condition number="95" type="jump" coverage="0%" />
-                    <condition number="103" type="jump" coverage="0%" />
+                    <condition number="95" type="jump" coverage="100%" />
+                    <condition number="106" type="jump" coverage="100%" />
+                    <condition number="117" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="647" hits="0" branch="False" />
-                <line number="649" hits="0" branch="False" />
+                <line number="637" hits="82320" branch="False" />
+                <line number="638" hits="82320" branch="False" />
+                <line number="640" hits="506" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="129" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="641" hits="506" branch="False" />
+                <line number="644" hits="735" branch="False" />
               </lines>
             </method>
-            <method name="GetSapDbConnectionString" signature="(System.String)" line-rate="0.2857" branch-rate="0.5" complexity="2">
+            <method name="GetSapDbConnectionString" signature="(System.String)" line-rate="1" branch-rate="1" complexity="2">
               <lines>
-                <line number="653" hits="36" branch="False" />
-                <line number="654" hits="72" branch="True" condition-coverage="50% (1/2)">
+                <line number="648" hits="38" branch="False" />
+                <line number="649" hits="75" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
-                    <condition number="23" type="jump" coverage="50%" />
+                    <condition number="23" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="656" hits="0" branch="False" />
-                <line number="657" hits="0" branch="False" />
-                <line number="658" hits="0" branch="False" />
-                <line number="659" hits="0" branch="False" />
-                <line number="660" hits="0" branch="False" />
+                <line number="651" hits="1" branch="False" />
+                <line number="652" hits="1" branch="False" />
+                <line number="653" hits="1" branch="False" />
+                <line number="654" hits="1" branch="False" />
+                <line number="655" hits="1" branch="False" />
               </lines>
             </method>
             <method name=".ctor" signature="(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger`1&lt;Approval.Infrastructure.Services.SapMetadataService&gt;)" line-rate="0.7272" branch-rate="1" complexity="2">
               <lines>
-                <line number="62" hits="21" branch="False" />
-                <line number="64" hits="21" branch="False" />
-                <line number="65" hits="21" branch="False" />
-                <line number="66" hits="21" branch="False" />
-                <line number="69" hits="21" branch="True" condition-coverage="100% (2/2)">
+                <line number="62" hits="22" branch="False" />
+                <line number="64" hits="22" branch="False" />
+                <line number="65" hits="22" branch="False" />
+                <line number="66" hits="22" branch="False" />
+                <line number="69" hits="22" branch="True" condition-coverage="100% (2/2)">
                   <conditions>
                     <condition number="52" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="71" hits="2" branch="False" />
-                <line number="73" hits="21" branch="False" />
+                <line number="71" hits="3" branch="False" />
+                <line number="73" hits="22" branch="False" />
                 <line number="74" hits="0" branch="False" />
                 <line number="76" hits="0" branch="False" />
                 <line number="77" hits="0" branch="False" />
-                <line number="78" hits="21" branch="False" />
+                <line number="78" hits="22" branch="False" />
               </lines>
             </method>
             <method name=".cctor" signature="()" line-rate="1" branch-rate="1" complexity="1">
@@ -7989,76 +8006,79 @@
             </method>
           </methods>
           <lines>
-            <line number="201" hits="36" branch="False" />
-            <line number="202" hits="36" branch="False" />
-            <line number="616" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="201" hits="40" branch="False" />
+            <line number="202" hits="40" branch="False" />
+            <line number="616" hits="245" branch="True" condition-coverage="50% (2/4)">
               <conditions>
-                <condition number="6" type="jump" coverage="0%" />
-                <condition number="15" type="jump" coverage="0%" />
+                <condition number="6" type="jump" coverage="50%" />
+                <condition number="15" type="jump" coverage="50%" />
               </conditions>
             </line>
-            <line number="619" hits="0" branch="False" />
-            <line number="622" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="619" hits="245" branch="False" />
+            <line number="622" hits="1470" branch="True" condition-coverage="100% (2/2)">
               <conditions>
-                <condition number="65" type="jump" coverage="0%" />
+                <condition number="65" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="624" hits="0" branch="False" />
-            <line number="626" hits="0" branch="False" />
-            <line number="631" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="624" hits="490" branch="False" />
+            <line number="626" hits="245" branch="False" />
+            <line number="630" hits="735" branch="True" condition-coverage="100% (2/2)">
               <conditions>
-                <condition number="9" type="jump" coverage="0%" />
+                <condition number="11" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="633" hits="0" branch="True" condition-coverage="0% (0/2)">
+            <line number="632" hits="166110" branch="True" condition-coverage="100% (2/2)">
               <conditions>
-                <condition number="30" type="jump" coverage="0%" />
+                <condition number="171" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="635" hits="0" branch="False" />
-            <line number="636" hits="0" branch="False" />
-            <line number="638" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="634" hits="82320" branch="True" condition-coverage="100% (2/2)">
               <conditions>
-                <condition number="59" type="jump" coverage="0%" />
-                <condition number="76" type="jump" coverage="0%" />
+                <condition number="73" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="640" hits="0" branch="False" />
-            <line number="641" hits="0" branch="False" />
-            <line number="645" hits="0" branch="True" condition-coverage="0% (0/4)">
+            <line number="636" hits="82320" branch="True" condition-coverage="100% (6/6)">
               <conditions>
-                <condition number="95" type="jump" coverage="0%" />
-                <condition number="103" type="jump" coverage="0%" />
+                <condition number="95" type="jump" coverage="100%" />
+                <condition number="106" type="jump" coverage="100%" />
+                <condition number="117" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="647" hits="0" branch="False" />
-            <line number="649" hits="0" branch="False" />
-            <line number="653" hits="36" branch="False" />
-            <line number="654" hits="72" branch="True" condition-coverage="50% (1/2)">
+            <line number="637" hits="82320" branch="False" />
+            <line number="638" hits="82320" branch="False" />
+            <line number="640" hits="506" branch="True" condition-coverage="50% (1/2)">
               <conditions>
-                <condition number="23" type="jump" coverage="50%" />
+                <condition number="129" type="jump" coverage="50%" />
               </conditions>
             </line>
-            <line number="656" hits="0" branch="False" />
-            <line number="657" hits="0" branch="False" />
-            <line number="658" hits="0" branch="False" />
-            <line number="659" hits="0" branch="False" />
-            <line number="660" hits="0" branch="False" />
-            <line number="62" hits="21" branch="False" />
-            <line number="64" hits="21" branch="False" />
-            <line number="65" hits="21" branch="False" />
-            <line number="66" hits="21" branch="False" />
-            <line number="69" hits="21" branch="True" condition-coverage="100% (2/2)">
+            <line number="641" hits="506" branch="False" />
+            <line number="644" hits="735" branch="False" />
+            <line number="648" hits="38" branch="False" />
+            <line number="649" hits="75" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="23" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="651" hits="1" branch="False" />
+            <line number="652" hits="1" branch="False" />
+            <line number="653" hits="1" branch="False" />
+            <line number="654" hits="1" branch="False" />
+            <line number="655" hits="1" branch="False" />
+            <line number="62" hits="22" branch="False" />
+            <line number="64" hits="22" branch="False" />
+            <line number="65" hits="22" branch="False" />
+            <line number="66" hits="22" branch="False" />
+            <line number="69" hits="22" branch="True" condition-coverage="100% (2/2)">
               <conditions>
                 <condition number="52" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="71" hits="2" branch="False" />
-            <line number="73" hits="21" branch="False" />
+            <line number="71" hits="3" branch="False" />
+            <line number="73" hits="22" branch="False" />
             <line number="74" hits="0" branch="False" />
             <line number="76" hits="0" branch="False" />
             <line number="77" hits="0" branch="False" />
-            <line number="78" hits="21" branch="False" />
+            <line number="78" hits="22" branch="False" />
             <line number="19" hits="1" branch="False" />
             <line number="20" hits="1" branch="False" />
             <line number="22" hits="1" branch="False" />
@@ -8098,16 +8118,16 @@
             <line number="60" hits="1" branch="False" />
           </lines>
         </class>
-        <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;&gt;c" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0" branch-rate="1" complexity="1">
+        <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;&gt;c" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="1" branch-rate="1" complexity="1">
           <methods>
-            <method name="&lt;LoadMetadataFromDbAsync&gt;b__13_0" signature="(System.String)" line-rate="0" branch-rate="1" complexity="1">
+            <method name="&lt;LoadMetadataFromDbAsync&gt;b__13_0" signature="(System.String)" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="341" hits="0" branch="False" />
+                <line number="341" hits="3" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="341" hits="0" branch="False" />
+            <line number="341" hits="3" branch="False" />
           </lines>
         </class>
         <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;GetCompanyInfoAsync&gt;d__8" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0.4583" branch-rate="0.20829999999999999" complexity="24">
@@ -8232,78 +8252,78 @@
           <methods>
             <method name="MoveNext" signature="()" line-rate="0.7894" branch-rate="0.9166" complexity="12">
               <lines>
-                <line number="128" hits="17" branch="False" />
-                <line number="131" hits="17" branch="True" condition-coverage="100% (6/6)">
+                <line number="128" hits="18" branch="False" />
+                <line number="131" hits="18" branch="True" condition-coverage="100% (6/6)">
                   <conditions>
                     <condition number="71" type="jump" coverage="100%" />
                     <condition number="91" type="jump" coverage="100%" />
                     <condition number="109" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="133" hits="7" branch="False" />
-                <line number="137" hits="10" branch="False" />
-                <line number="138" hits="10" branch="True" condition-coverage="100% (4/4)">
+                <line number="133" hits="4" branch="False" />
+                <line number="137" hits="14" branch="False" />
+                <line number="138" hits="14" branch="True" condition-coverage="100% (4/4)">
                   <conditions>
                     <condition number="153" type="jump" coverage="100%" />
                     <condition number="169" type="jump" coverage="100%" />
                   </conditions>
                 </line>
-                <line number="142" hits="1" branch="False" />
-                <line number="143" hits="1" branch="False" />
-                <line number="144" hits="1" branch="True" condition-coverage="50% (1/2)">
+                <line number="142" hits="3" branch="False" />
+                <line number="143" hits="3" branch="False" />
+                <line number="144" hits="3" branch="True" condition-coverage="50% (1/2)">
                   <conditions>
                     <condition number="303" type="jump" coverage="50%" />
                   </conditions>
                 </line>
-                <line number="146" hits="1" branch="False" />
-                <line number="147" hits="1" branch="False" />
+                <line number="146" hits="3" branch="False" />
+                <line number="147" hits="3" branch="False" />
                 <line number="149" hits="0" branch="False" />
                 <line number="150" hits="0" branch="False" />
                 <line number="152" hits="0" branch="False" />
                 <line number="153" hits="0" branch="False" />
-                <line number="157" hits="9" branch="False" />
-                <line number="158" hits="9" branch="False" />
-                <line number="161" hits="9" branch="False" />
-                <line number="163" hits="9" branch="False" />
-                <line number="164" hits="17" branch="False" />
+                <line number="157" hits="11" branch="False" />
+                <line number="158" hits="11" branch="False" />
+                <line number="161" hits="11" branch="False" />
+                <line number="163" hits="11" branch="False" />
+                <line number="164" hits="18" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="128" hits="17" branch="False" />
-            <line number="131" hits="17" branch="True" condition-coverage="100% (6/6)">
+            <line number="128" hits="18" branch="False" />
+            <line number="131" hits="18" branch="True" condition-coverage="100% (6/6)">
               <conditions>
                 <condition number="71" type="jump" coverage="100%" />
                 <condition number="91" type="jump" coverage="100%" />
                 <condition number="109" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="133" hits="7" branch="False" />
-            <line number="137" hits="10" branch="False" />
-            <line number="138" hits="10" branch="True" condition-coverage="100% (4/4)">
+            <line number="133" hits="4" branch="False" />
+            <line number="137" hits="14" branch="False" />
+            <line number="138" hits="14" branch="True" condition-coverage="100% (4/4)">
               <conditions>
                 <condition number="153" type="jump" coverage="100%" />
                 <condition number="169" type="jump" coverage="100%" />
               </conditions>
             </line>
-            <line number="142" hits="1" branch="False" />
-            <line number="143" hits="1" branch="False" />
-            <line number="144" hits="1" branch="True" condition-coverage="50% (1/2)">
+            <line number="142" hits="3" branch="False" />
+            <line number="143" hits="3" branch="False" />
+            <line number="144" hits="3" branch="True" condition-coverage="50% (1/2)">
               <conditions>
                 <condition number="303" type="jump" coverage="50%" />
               </conditions>
             </line>
-            <line number="146" hits="1" branch="False" />
-            <line number="147" hits="1" branch="False" />
+            <line number="146" hits="3" branch="False" />
+            <line number="147" hits="3" branch="False" />
             <line number="149" hits="0" branch="False" />
             <line number="150" hits="0" branch="False" />
             <line number="152" hits="0" branch="False" />
             <line number="153" hits="0" branch="False" />
-            <line number="157" hits="9" branch="False" />
-            <line number="158" hits="9" branch="False" />
-            <line number="161" hits="9" branch="False" />
-            <line number="163" hits="9" branch="False" />
-            <line number="164" hits="17" branch="False" />
+            <line number="157" hits="11" branch="False" />
+            <line number="158" hits="11" branch="False" />
+            <line number="161" hits="11" branch="False" />
+            <line number="163" hits="11" branch="False" />
+            <line number="164" hits="18" branch="False" />
           </lines>
         </class>
         <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;RefreshAllMetadataAndSaveToDiskAsync&gt;d__10" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0.85" branch-rate="1" complexity="2">
@@ -8364,34 +8384,34 @@
             <line number="197" hits="2" branch="False" />
           </lines>
         </class>
-        <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;SaveToDiskAsync&gt;d__12" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="1" branch-rate="1" complexity="1">
+        <class name="Approval.Infrastructure.Services.SapMetadataService/&lt;SaveToDiskAsync&gt;d__12" filename="Approval.Infrastructure\Services\SapMetadataService.cs" line-rate="0.7" branch-rate="1" complexity="1">
           <methods>
-            <method name="MoveNext" signature="()" line-rate="1" branch-rate="1" complexity="1">
+            <method name="MoveNext" signature="()" line-rate="0.7" branch-rate="1" complexity="1">
               <lines>
-                <line number="209" hits="35" branch="False" />
-                <line number="210" hits="35" branch="False" />
-                <line number="211" hits="35" branch="False" />
-                <line number="212" hits="34" branch="False" />
-                <line number="213" hits="34" branch="False" />
-                <line number="214" hits="34" branch="False" />
-                <line number="215" hits="1" branch="False" />
-                <line number="217" hits="1" branch="False" />
-                <line number="218" hits="1" branch="False" />
-                <line number="219" hits="35" branch="False" />
+                <line number="209" hits="37" branch="False" />
+                <line number="210" hits="37" branch="False" />
+                <line number="211" hits="37" branch="False" />
+                <line number="212" hits="37" branch="False" />
+                <line number="213" hits="37" branch="False" />
+                <line number="214" hits="37" branch="False" />
+                <line number="215" hits="0" branch="False" />
+                <line number="217" hits="0" branch="False" />
+                <line number="218" hits="0" branch="False" />
+                <line number="219" hits="37" branch="False" />
               </lines>
             </method>
           </methods>
           <lines>
-            <line number="209" hits="35" branch="False" />
-            <line number="210" hits="35" branch="False" />
-            <line number="211" hits="35" branch="False" />
-            <line number="212" hits="34" branch="False" />
-            <line number="213" hits="34" branch="False" />
-            <line number="214" hits="34" branch="False" />
-            <line number="215" hits="1" branch="False" />
-            <line number="217" hits="1" branch="False" />
-            <line number="218" hits="1" branch="False" />
-            <line number="219" hits="35" branch="False" />
+            <line number="209" hits="37" branch="False" />
+            <line number="210" hits="37" branch="False" />
+            <line number="211" hits="37" branch="False" />
+            <line number="212" hits="37" branch="False" />
+            <line number="213" hits="37" branch="False" />
+            <line number="214" hits="37" branch="False" />
+            <line number="215" hits="0" branch="False" />
+            <line number="217" hits="0" branch="False" />
+            <line number="218" hits="0" branch="False" />
+            <line number="219" hits="37" branch="False" />
           </lines>
         </class>
         <class name="Approval.Infrastructure.Services.SnapshotCompressionHelper" filename="Approval.Infrastructure\Services\SnapshotCompressionHelper.cs" line-rate="0" branch-rate="0" complexity="10">

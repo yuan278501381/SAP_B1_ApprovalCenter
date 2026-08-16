@@ -2,7 +2,6 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../config/request'
 import DocDataViewer from './DocDataViewer.vue'
-import FontSizeSwitcher from './common/FontSizeSwitcher.vue'
 import { useWorkbench } from '../composables/useWorkbench'
 import { loadUserFontSize } from '../composables/useFontSize'
 import { appConfig, sapObjectMap, fallbackSapObjectStyle } from '../config'
@@ -318,8 +317,6 @@ onUnmounted(() => {
             <option value="admin">平台管理员 (admin) - 全权限</option>
           </select>
         </div>
-
-        <FontSizeSwitcher class="mr-1" />
 
         <button class="btn btn-secondary btn-sm" @click="loadTasks(); loadNotifications();" :disabled="loading">
           <RefreshCw :class="['w-3.5 h-3.5 mr-1', loading ? 'animate-spin' : '']" />

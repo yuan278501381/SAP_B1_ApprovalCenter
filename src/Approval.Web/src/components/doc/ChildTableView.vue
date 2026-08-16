@@ -85,7 +85,7 @@ const props = defineProps<{
   min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm, 12px);
   text-align: left;
   line-height: 1.4;
 }
@@ -101,7 +101,7 @@ const props = defineProps<{
   background: #f8fafc;
   color: #334155;
   font-weight: 600;
-  font-size: 11.5px;
+  font-size: var(--font-size-xs, 11.5px);
   padding: 8px 12px;
   border-bottom: 2px solid #cbd5e1;
   border-right: 1px solid #e2e8f0;
@@ -138,6 +138,7 @@ const props = defineProps<{
   border-right: 1px solid #f8fafc;
   padding: 6px 12px;
   color: #1e293b;
+  font-size: var(--font-size-sm, 12px);
   white-space: nowrap;
   transition: background-color 0.1s ease;
 }

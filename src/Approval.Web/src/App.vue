@@ -4,6 +4,7 @@ import TaskWorkbench from './components/TaskWorkbench.vue'
 import RuleMatrixManager from './components/RuleMatrixManager.vue'
 import WorkflowDesigner from './components/WorkflowDesigner.vue'
 import BpmnPlayground from './components/BpmnPlayground.vue'
+import FontSizeSwitcher from './components/common/FontSizeSwitcher.vue'
 import {
   CheckSquare,
   Sliders,
@@ -51,6 +52,10 @@ const currentTab = ref<'workbench' | 'rules' | 'designer' | 'bpmnlab'>('workbenc
           <span>流程模型设计器 (节点/审批人)</span>
         </button>
       </div>
+
+      <div class="nav-right-actions">
+        <FontSizeSwitcher />
+      </div>
     </nav>
 
     <!-- 视图呈现 -->
@@ -86,9 +91,15 @@ html, body, #app {
   padding: 0 16px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid #1e293b;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   z-index: 50;
+}
+
+.nav-right-actions {
+  display: flex;
+  align-items: center;
 }
 
 .tabs-container {

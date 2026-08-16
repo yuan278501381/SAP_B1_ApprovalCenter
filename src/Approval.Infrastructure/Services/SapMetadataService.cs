@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Data;
 using System.Text.Json;
+using System.Xml.Linq;
 using Approval.Application.Common.Interfaces;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +19,7 @@ public class SapMetadataService : ISapMetadataService
     private readonly ILogger<SapMetadataService> _logger;
     private static readonly ConcurrentDictionary<string, (DateTime ExpireAt, ObjectMetadataResult Result)> Cache = new();
     private static readonly ConcurrentDictionary<string, (DateTime ExpireAt, CompanyInfoResult Result)> CompanyCache = new();
+    private static readonly ConcurrentDictionary<string, (DateTime ExpireAt, ChUdoFormMetadataResult Result)> FormCache = new();
     private readonly string _cacheDirectory;
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -649,6 +651,338 @@ public class SapMetadataService : ISapMetadataService
                 meta.ValidValues[code] = name;
             }
         }
+    }
+
+    /// <summary>
+    /// 从 SAP B1 CPRF / OUSR 表获取用户针对指定单据在 SAP 客户端中配置的表格列显示顺序、列宽与隐藏列状态
+    /// </summary>
+    public async Task<UserFormSettingsResult> GetUserFormSettingsAsync(
+        string companyId,
+        string objectCode,
+        string userCode,
+        CancellationToken ct = default)
+    {
+        var result = new UserFormSettingsResult
+        {
+            ObjectCode = objectCode,
+            UserCode = userCode,
+            HasSapSettings = false
+        };
+
+        var sapConnStr = GetSapDbConnectionString(companyId);
+        if (string.IsNullOrWhiteSpace(sapConnStr)) return result;
+
+        try
+        {
+            await using var conn = new SqlConnection(sapConnStr);
+            await conn.OpenAsync(ct);
+
+            // 1. 查询对应用户的 UserSign
+            int? userSign = null;
+            await using (var cmdUser = conn.CreateCommand())
+            {
+                cmdUser.CommandText = "SELECT TOP 1 USERID FROM OUSR WHERE USER_CODE = @UserCode";
+                cmdUser.Parameters.Add(new SqlParameter("@UserCode", SqlDbType.NVarChar) { Value = userCode });
+                var res = await cmdUser.ExecuteScalarAsync(ct);
+                if (res != null && res != DBNull.Value)
+                {
+                    userSign = Convert.ToInt32(res);
+                }
+            }
+
+            if (!userSign.HasValue) return result;
+
+            // 2. 从 CPRF 查询表单格式 (匹配 UDO 或标准单据 FormID)
+            var columnList = new List<(string ColId, int VisualIndex, string VisInForm, int Width)>();
+            await using (var cmdCprf = conn.CreateCommand())
+            {
+                cmdCprf.CommandText = @"
+                    SELECT ColID, VisualIndx, VisInForm, Width
+                    FROM CPRF
+                    WHERE UserSign = @UserSign
+                      AND (FormID LIKE '%' + @ObjCode + '%' OR FormID = @ObjCode OR FormID LIKE '%ORD%' OR FormID = '139')
+                      AND ColID IS NOT NULL AND ColID <> '' AND ColID <> '0'
+                    ORDER BY VisualIndx ASC";
+                cmdCprf.Parameters.Add(new SqlParameter("@UserSign", SqlDbType.SmallInt) { Value = (short)userSign.Value });
+                cmdCprf.Parameters.Add(new SqlParameter("@ObjCode", SqlDbType.NVarChar) { Value = objectCode });
+
+                await using var reader = await cmdCprf.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var colId = reader.GetString(0);
+                    var visualIndx = reader.GetInt32(1);
+                    var visInForm = reader.IsDBNull(2) ? "Y" : reader.GetString(2).Trim();
+                    var width = reader.IsDBNull(3) ? 100 : reader.GetInt32(3);
+
+                    columnList.Add((colId, visualIndx, visInForm, width));
+                }
+            }
+
+            if (columnList.Count > 0)
+            {
+                result = result with
+                {
+                    HasSapSettings = true,
+                    ColumnOrders = columnList.Select(x => x.ColId).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    HiddenColumns = columnList.Where(x => x.VisInForm.Equals("N", StringComparison.OrdinalIgnoreCase)).Select(x => x.ColId).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    ColumnWidths = columnList.GroupBy(x => x.ColId, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Width, StringComparer.OrdinalIgnoreCase)
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[SapMetadata] 查询用户 {UserCode} 在单据 {ObjectCode} 的 SAP CPRF 偏好失败，降级回退", userCode, objectCode);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 世界级高性能多级缓存：获取辅助平台 [@Ch_Udo_Form] 原始设计拓扑、Tab页签、右侧物性参数、下拉选项与 CFL 穿透关联
+    /// </summary>
+    public async Task<ChUdoFormMetadataResult> GetUdoFormLayoutAsync(
+        string companyId,
+        string objectCode,
+        bool forceRefresh = false,
+        CancellationToken ct = default)
+    {
+        var cacheKey = $"{companyId}_{objectCode}".ToUpperInvariant();
+        var now = DateTime.UtcNow;
+
+        // Level 1: 内存高速缓存 (0ms)
+        if (!forceRefresh && FormCache.TryGetValue(cacheKey, out var mem) && mem.ExpireAt > now)
+        {
+            return mem.Result;
+        }
+
+        // Level 2: 磁盘持久化快照 (毫秒级)
+        var diskPath = Path.Combine(_cacheDirectory, $"form_{companyId}_{objectCode}.json");
+        if (!forceRefresh && File.Exists(diskPath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(diskPath, ct);
+                var diskResult = JsonSerializer.Deserialize<ChUdoFormMetadataResult>(json, JsonOpts);
+                if (diskResult != null)
+                {
+                    FormCache[cacheKey] = (now.AddMinutes(10), diskResult);
+                    return diskResult;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[SapMetadata] 读取磁盘表单快照失败: {Path}", diskPath);
+            }
+        }
+
+        // Level 3: 从数据库直拉并流式解析 XML
+        var result = new ChUdoFormMetadataResult
+        {
+            ObjectCode = objectCode,
+            Title = $"{objectCode} 垦青单据"
+        };
+
+        var sapConnStr = GetSapDbConnectionString(companyId);
+        if (string.IsNullOrWhiteSpace(sapConnStr)) return result;
+
+        try
+        {
+            await using var conn = new SqlConnection(sapConnStr);
+            await conn.OpenAsync(ct);
+
+            string? title = null;
+            int fWidth = 1200, fHeight = 577;
+            string? foldersXml = null, formXml = null;
+
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT TOP 1 Title, fWidth, fHeight, Folders, FormXml 
+                    FROM dbo.[@Ch_Udo_Form] 
+                    WHERE ObjectType = @ObjCode 
+                    ORDER BY CAST(Code as int) DESC";
+                cmd.Parameters.Add(new SqlParameter("@ObjCode", SqlDbType.NVarChar) { Value = objectCode });
+
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                if (await reader.ReadAsync(ct))
+                {
+                    title = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    if (!reader.IsDBNull(1)) fWidth = reader.GetInt32(1);
+                    if (!reader.IsDBNull(2)) fHeight = reader.GetInt32(2);
+                    foldersXml = reader.IsDBNull(3) ? null : reader.GetString(3);
+                    formXml = reader.IsDBNull(4) ? null : reader.GetString(4);
+                }
+            }
+
+            var tabs = new List<FormFolderTabDto>();
+            var headerFields = new List<FormItemFieldDto>();
+            var qualitySpecs = new List<FormItemFieldDto>();
+            var linkedObjs = new Dictionary<string, FormCflLinkDto>(StringComparer.OrdinalIgnoreCase);
+            var dropdowns = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. 解析 Folders XML (Tab 页签)
+            if (!string.IsNullOrWhiteSpace(foldersXml))
+            {
+                try
+                {
+                    var fDoc = XDocument.Parse(foldersXml);
+                    foreach (var fNode in fDoc.Descendants("CUserFormFolderOBJ"))
+                    {
+                        var cap = (string?)fNode.Attribute("Caption") ?? "";
+                        var act = (string?)fNode.Attribute("Activated") == "1";
+                        if (int.TryParse((string?)fNode.Attribute("ManagerPane"), out var pId) && !string.IsNullOrWhiteSpace(cap) && !cap.Contains("未命名"))
+                        {
+                            tabs.Add(new FormFolderTabDto(pId, cap.Trim(), act));
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // 2. 高性能解析 FormXml
+            if (!string.IsNullOrWhiteSpace(formXml))
+            {
+                try
+                {
+                    var xDoc = XDocument.Parse(formXml);
+
+                    // 2.1 提取 ChooseFromList (主数据与单据穿透)
+                    foreach (var cfl in xDoc.Descendants("ChooseFromList"))
+                    {
+                        var uId = (string?)cfl.Attribute("UniqueID");
+                        var objType = (string?)cfl.Attribute("ObjectType") ?? "";
+                        if (!string.IsNullOrWhiteSpace(uId))
+                        {
+                            var targetName = objType switch
+                            {
+                                "2" => "业务伙伴主数据 (OCRD)",
+                                "4" => "物料主数据 (OITM)",
+                                "17" => "销售订单 (ORDR)",
+                                "23" => "销售报价单 (OQUT)",
+                                "171" => "员工/业务员 (OHEM/OSLP)",
+                                "112" => "草稿单据 (ODRF)",
+                                _ => objType
+                            };
+                            linkedObjs[uId] = new FormCflLinkDto(objType, targetName);
+                        }
+                    }
+
+                    // 2.2 提取 ComboBox 下拉字典
+                    foreach (var cItem in xDoc.Descendants("item").Where(x => (string?)x.Attribute("type") == "113"))
+                    {
+                        var alias = (string?)cItem.Descendants("databind").FirstOrDefault()?.Attribute("alias");
+                        if (!string.IsNullOrWhiteSpace(alias))
+                        {
+                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var vNode in cItem.Descendants("ValidValue"))
+                            {
+                                var val = (string?)vNode.Attribute("value");
+                                var desc = (string?)vNode.Attribute("description");
+                                if (!string.IsNullOrWhiteSpace(val))
+                                {
+                                    dict[val] = desc ?? val;
+                                }
+                            }
+                            if (dict.Count > 0)
+                            {
+                                dropdowns[alias] = dict;
+                                if (!alias.StartsWith("U_")) dropdowns["U_" + alias] = dict;
+                            }
+                        }
+                    }
+
+                    // 2.3 提取 Items 并智能匹配 Label 与坐标
+                    var labelsByUid = new Dictionary<string, string>();
+                    var labelsByLinkTo = new Dictionary<string, string>();
+
+                    foreach (var lItem in xDoc.Descendants("item").Where(x => (string?)x.Attribute("type") == "8"))
+                    {
+                        var lUid = (string?)lItem.Attribute("uid") ?? "";
+                        var cap = (string?)lItem.Descendants("specific").FirstOrDefault()?.Attribute("caption") ?? "";
+                        var linkTo = (string?)lItem.Attribute("linkto") ?? "";
+                        if (!string.IsNullOrWhiteSpace(cap))
+                        {
+                            labelsByUid[lUid] = cap.Trim();
+                            if (!string.IsNullOrWhiteSpace(linkTo))
+                            {
+                                labelsByLinkTo[linkTo] = cap.Trim();
+                            }
+                        }
+                    }
+
+                    foreach (var item in xDoc.Descendants("item"))
+                    {
+                        var uid = (string?)item.Attribute("uid") ?? "";
+                        var typeStr = (string?)item.Attribute("type") ?? "0";
+                        int.TryParse(typeStr, out var iType);
+                        if (iType == 4 || iType == 8 || iType == 99 || iType == 127) continue;
+
+                        var alias = (string?)item.Descendants("databind").FirstOrDefault()?.Attribute("alias") ?? "";
+                        if (string.IsNullOrWhiteSpace(alias) && uid.StartsWith("u")) alias = uid;
+
+                        int.TryParse((string?)item.Attribute("top"), out var top);
+                        int.TryParse((string?)item.Attribute("left"), out var left);
+                        int.TryParse((string?)item.Attribute("width"), out var width);
+                        int.TryParse((string?)item.Attribute("height"), out var height);
+                        int.TryParse((string?)item.Attribute("from_pane"), out var pane);
+
+                        var label = (string?)item.Descendants("specific").FirstOrDefault()?.Attribute("caption");
+                        if (string.IsNullOrWhiteSpace(label) && labelsByLinkTo.TryGetValue(uid, out var linkedLabel)) label = linkedLabel;
+                        if (string.IsNullOrWhiteSpace(label)) label = alias;
+
+                        string? linkedObjCode = null;
+                        if (linkedObjs.TryGetValue(uid, out var cfl))
+                        {
+                            linkedObjCode = cfl.ObjectType;
+                        }
+
+                        var fieldDto = new FormItemFieldDto(uid, alias, label, iType, top, left, width, height, pane, linkedObjCode);
+
+                        // 右侧物性与工艺质量专区 (Left >= 850)
+                        if (left >= 850 && pane == 0)
+                        {
+                            qualitySpecs.Add(fieldDto);
+                        }
+                        else if (pane == 0 && top < 120)
+                        {
+                            headerFields.Add(fieldDto);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[SapMetadata] 解析 FormXml 失败");
+                }
+            }
+
+            result = new ChUdoFormMetadataResult
+            {
+                ObjectCode = objectCode,
+                Title = title ?? $"{objectCode} 垦青单据",
+                FormWidth = fWidth,
+                FormHeight = fHeight,
+                Tabs = tabs,
+                HeaderFields = headerFields.OrderBy(x => x.Top).ThenBy(x => x.Left).ToList(),
+                QualitySpecsFields = qualitySpecs.OrderBy(x => x.Top).ToList(),
+                LinkedObjects = linkedObjs,
+                Dropdowns = dropdowns
+            };
+
+            // 存入多级缓存 (内存 + 磁盘)
+            FormCache[cacheKey] = (now.AddMinutes(10), result);
+            try
+            {
+                Directory.CreateDirectory(_cacheDirectory);
+                await File.WriteAllTextAsync(diskPath, JsonSerializer.Serialize(result, JsonOpts), ct);
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SapMetadata] 查询 @Ch_Udo_Form 布局失败: {ObjectCode}", objectCode);
+        }
+
+        return result;
     }
 
     private string? GetSapDbConnectionString(string companyId)

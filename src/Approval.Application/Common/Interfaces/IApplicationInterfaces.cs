@@ -106,10 +106,60 @@ public interface ISapMetadataService
     Task<ObjectMetadataResult> GetObjectMetadataAsync(string companyId, string objectCode, bool forceRefresh = false, CancellationToken ct = default);
 
     /// <summary>
+    /// 获取用户在 SAP B1 客户端中的个性化表单/表格列偏好设置 (从 CPRF / OUSR 提取并映射)
+    /// </summary>
+    Task<UserFormSettingsResult> GetUserFormSettingsAsync(string companyId, string objectCode, string userCode, CancellationToken ct = default);
+
+    /// <summary>
+    /// 获取辅助平台 [@Ch_Udo_Form] 原始窗口设计拓扑、Tab页签、右侧物性专区、下拉枚举与 CFL 主数据穿透关联 (多级高速缓存)
+    /// </summary>
+    Task<ChUdoFormMetadataResult> GetUdoFormLayoutAsync(string companyId, string objectCode, bool forceRefresh = false, CancellationToken ct = default);
+
+    /// <summary>
     /// 全量拉取 SAP 元数据与全系统字典 (OEXD, OSLP, OCTG, OHEM, OSTC, CUFD, UFD1) 并持久化序列化落盘 (供定时调度器与手动即时刷新调用)
     /// </summary>
     Task RefreshAllMetadataAndSaveToDiskAsync(string companyId, CancellationToken ct = default);
 }
+
+public record UserFormSettingsResult
+{
+    public string ObjectCode { get; init; } = "";
+    public string UserCode { get; init; } = "";
+    public bool HasSapSettings { get; init; }
+    public List<string> ColumnOrders { get; init; } = new();
+    public List<string> HiddenColumns { get; init; } = new();
+    public Dictionary<string, int> ColumnWidths { get; init; } = new();
+}
+
+public record ChUdoFormMetadataResult
+{
+    public string ObjectCode { get; init; } = "";
+    public string Title { get; init; } = "";
+    public int FormWidth { get; init; } = 1200;
+    public int FormHeight { get; init; } = 577;
+    public List<FormFolderTabDto> Tabs { get; init; } = new();
+    public List<FormItemFieldDto> HeaderFields { get; init; } = new();
+    public List<FormItemFieldDto> QualitySpecsFields { get; init; } = new();
+    public Dictionary<string, FormCflLinkDto> LinkedObjects { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Dictionary<string, string>> Dropdowns { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public record FormFolderTabDto(int PaneId, string Caption, bool Activated);
+
+public record FormItemFieldDto(
+    string Uid,
+    string Alias,
+    string Label,
+    int Type,
+    int Top,
+    int Left,
+    int Width,
+    int Height,
+    int Pane,
+    string? LinkedObjectCode = null
+);
+
+public record FormCflLinkDto(string ObjectType, string TargetName);
 
 public interface ITraceContext
 {

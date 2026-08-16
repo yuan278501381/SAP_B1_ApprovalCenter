@@ -20,8 +20,12 @@ public class SapMetadataServiceDeepTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_cacheDir))
-            Directory.Delete(_cacheDir, true);
+        try
+        {
+            if (Directory.Exists(_cacheDir))
+                Directory.Delete(_cacheDir, true);
+        }
+        catch { }
     }
 
     [Fact]

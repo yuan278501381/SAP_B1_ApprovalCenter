@@ -10,7 +10,7 @@ import {
   getCurrencySymbol
 } from '../config'
 import {
-  Code2,
+  Code,
   Building2,
   FileText,
   Layers,
@@ -28,7 +28,10 @@ import {
   Save,
   ShieldCheck,
   ArrowRightLeft,
-  CheckCheck
+  CheckCheck,
+  FileMinus,
+  FilePlus,
+  RefreshCw
 } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -337,14 +340,52 @@ const journalBalanceInfo = computed(() => {
   }
 })
 
+// SAP [@Ch_Udo_Form] 原生右侧工艺质检与物性标准专区字段
+const QUALITY_SPECS_KEYS = [
+  'U_COLORLIGHT', 'U_ColorLight2', 'U_Spectrometer', 'U_COLORORDER',
+  'U_HEADWASHTEST', 'U_SSFtest', 'U_MATELTEST', 'U_PHTEST',
+  'U_WASHCHECK', 'U_CorrosionTest', 'U_ChildReq', 'U_Thingtest',
+  'U_TorqueReq', 'U_PRDSTD', 'U_PPT', 'U_WMtest', 'U_DWtest',
+  'U_QCREPORT', 'U_DeclareStatus', 'U_Limit', 'U_Paperlang',
+  'U_COVERPAPER', 'U_PAGREQ', 'U_FREIGHT', 'U_DELIVER', 'U_MORECHECK', 'U_COLORCHECK'
+]
+
+const isSpecsSidebarOpen = ref(true)
+
+const qualitySpecsFields = computed(() => {
+  const data = parsedData.value
+  if (!data) return []
+  const list: { key: string; label: string; formatted: { display: string; isTranslated: boolean; rawVal: any } }[] = []
+  QUALITY_SPECS_KEYS.forEach(k => {
+    let actualVal = data[k]
+    let actualKey = k
+    if (actualVal === undefined) {
+      const alt = k.startsWith('U_') ? k.substring(2) : ('U_' + k)
+      if (data[alt] !== undefined) {
+        actualVal = data[alt]
+        actualKey = alt
+      }
+    }
+    if (actualVal !== undefined && actualVal !== null && String(actualVal).trim() !== '' && String(actualVal).trim() !== '-') {
+      list.push({
+        key: actualKey,
+        label: getFieldLabel(actualKey),
+        formatted: formatFieldValue(actualKey, actualVal)
+      })
+    }
+  })
+  return list
+})
+
 const topPinnedFields = computed(() => {
   const data = parsedData.value
   const result: { key: string; label: string; formatted: { display: string; isTranslated: boolean; rawVal: any } }[] = []
   const renderedKeys = new Set<string>()
-  const baseExcluded = new Set(['U_CardName', 'CardName', 'U_CardCode', 'CardCode', 'DocTotal', 'U_DocTotal', 'DocNum', 'DocEntry', 'U_Comments', 'Comments'])
+  const specsKeySet = new Set(QUALITY_SPECS_KEYS)
+  const baseExcluded = new Set(['U_CardName', 'CardName', 'U_CardCode', 'CardCode', 'DocTotal', 'U_DocTotal', 'DocNum', 'DocEntry', 'U_Comments', 'Comments', 'U_SoTxt', 'SoTxt'])
 
   pinnedFieldKeys.value.forEach(k => {
-    if (baseExcluded.has(k)) return
+    if (baseExcluded.has(k) || (qualitySpecsFields.value.length > 0 && specsKeySet.has(k))) return
     
     let actualVal = data[k]
     let actualKey = k
@@ -785,6 +826,46 @@ const resetToCompanyDefaultLayout = async () => {
   }
 }
 
+const isSyncingSap = ref(false)
+
+const syncFromSapUserFormSettings = async () => {
+  const obj = props.objectCode || parsedData.value?.Object || 'CHORDR'
+  const user = currentUser.value || 'manager'
+  isSyncingSap.value = true
+  try {
+    const res = await api.get('/metadata/user-form-settings', {
+      params: {
+        companyId: props.companyId || 'DB_KCC',
+        objectCode: obj,
+        userCode: user
+      }
+    })
+    const data = res.data?.data
+    if (data && data.hasSapSettings) {
+      // 1. 同步列顺序 (针对各子表)
+      if (data.columnOrders && data.columnOrders.length > 0) {
+        processedCollections.value.forEach(c => {
+          collectionColOrders.value[c.key] = [...data.columnOrders]
+        })
+      }
+      // 2. 同步隐藏列
+      if (data.hiddenColumns && data.hiddenColumns.length > 0) {
+        processedCollections.value.forEach(c => {
+          collectionHiddenCols.value[c.key] = [...data.hiddenColumns]
+        })
+      }
+      syncLocalLayoutCache()
+      showDrawerToast(`已成功继承 [${user}] 在 SAP 客户端中配置的专属列顺序与隐藏偏好 (CPRF)！`, 'success')
+    } else {
+      showDrawerToast(`操作员 [${user}] 在 SAP CPRF 中暂无该单据专属排版记录，已维持当前推荐布局。`, 'success')
+    }
+  } catch (err: any) {
+    showDrawerToast(err.response?.data?.message || '同步 SAP 客户端偏好失败', 'error')
+  } finally {
+    isSyncingSap.value = false
+  }
+}
+
 // ===================== 双栏穿梭抽屉数据计算与操作 =====================
 const transferLeftItems = computed(() => {
   const q = transferSearchLeft.value.trim().toLowerCase()
@@ -1166,7 +1247,170 @@ const openTransferDrawer = (tabKey: string = 'header') => {
       </div>
     </div>
 
-    <!-- 2. 多重备注与说明专属收敛便签栏 (默认紧凑单行，消除黄色刺眼色块，支持平滑展开) -->
+    <!-- 2. 中间主体分栏 (左侧子表明细 Matrix + 右侧 SAP [@Ch_Udo_Form] 原生工艺质检与物性标准侧边栏) -->
+    <div class="doc-body-split-pane">
+      <!-- 2.1 世界级明细表格一体化容器 (Tab 导航 + 行内搜索 + 密度调节 + 列定制) -->
+      <div class="table-unified-card">
+        <div class="table-toolbar-row">
+          <!-- Tab 切换 -->
+          <div class="table-tabs-group">
+            <button
+              v-for="(c, cIdx) in processedCollections"
+              :key="c.key"
+              :class="['table-tab-item', activeDocTab === ('tab_table_' + cIdx) ? 'active' : '']"
+              @click="activeDocTab = 'tab_table_' + cIdx"
+            >
+              <Layers class="w-3.5 h-3.5 mr-1.5" />
+              <span>{{ c.label }}</span>
+              <span class="tab-badge-count">{{ c.processedRows.length }}</span>
+            </button>
+
+            <button
+              :class="['table-tab-item', activeDocTab === 'tab_header' ? 'active' : '']"
+              @click="activeDocTab = 'tab_header'"
+            >
+              <Tag class="w-3.5 h-3.5 mr-1.5" />
+              <span>对象主表属性</span>
+              <span class="tab-badge-count">{{ headerUdfFields.length }}</span>
+            </button>
+
+            <button
+              :class="['table-tab-item', activeDocTab === 'tab_json' ? 'active' : '']"
+              @click="activeDocTab = 'tab_json'"
+            >
+              <Code class="w-3.5 h-3.5 mr-1.5" />
+              <span>原始快照 (JSON)</span>
+            </button>
+          </div>
+
+          <div class="table-actions-group">
+            <!-- 密度切换 (紧凑/标准/宽松) -->
+            <div class="density-switch-group">
+              <button
+                :class="['density-btn', tableDensity === 'compact' ? 'active' : '']"
+                @click="setTableDensity('compact')"
+                title="紧凑高密度模式"
+              >
+                紧凑
+              </button>
+              <button
+                :class="['density-btn', tableDensity === 'normal' ? 'active' : '']"
+                @click="setTableDensity('normal')"
+                title="标准模式"
+              >
+                标准
+              </button>
+              <button
+                :class="['density-btn', tableDensity === 'comfortable' ? 'active' : '']"
+                @click="setTableDensity('comfortable')"
+                title="舒适模式"
+              >
+                宽松
+              </button>
+            </div>
+
+            <!-- 字段与列定制唯一统一全局入口 (可配置主表、行表、备注归集与呈现模式) -->
+            <button
+              class="btn-col-customize-pill"
+              @click="openUnifiedCustomizationDrawer"
+              title="统一配置对象主表属性、子表明细列、备注归集与关联字典显示模式"
+            >
+              <SlidersHorizontal class="w-3 h-3 text-blue-600 mr-1" />
+              <span>字段与列定制</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 表格内容主体 (Sticky 表头 + 虚拟沉浸式滚动) -->
+        <div class="table-viewport-wrapper">
+          <template v-for="(c, cIdx) in processedCollections" :key="c.key">
+            <ChildTableView v-if="activeDocTab === ('tab_table_' + cIdx)" :collection="c" :tableDensity="tableDensity" />
+          </template>
+
+          <!-- 对象主表属性网格 -->
+          <div v-if="activeDocTab === 'tab_header'" class="header-fields-wrapper">
+            <div class="header-fields-filter-bar">
+              <Search class="w-3.5 h-3.5 text-slate-400 mr-2" />
+              <input
+                v-model="searchUdf"
+                placeholder="搜索对象主表属性名 / 描述 / 取值..."
+                class="header-search-input"
+              />
+            </div>
+
+            <div class="modern-fields-grid">
+              <div
+                v-for="f in headerUdfFields"
+                :key="f.key"
+                class="modern-field-card"
+                :class="[isFieldPinned(f.key) ? 'pinned' : '']"
+              >
+                <div class="card-top-line">
+                  <span class="field-title" :title="f.key">{{ f.label }}</span>
+                  <span v-if="f.key !== f.label" class="field-key-code font-mono">{{ f.key }}</span>
+                  <div class="card-mini-actions">
+                    <button
+                      class="btn-icon-action"
+                      :class="[isFieldPinned(f.key) ? 'active' : '']"
+                      @click="togglePinField(f.key)"
+                      :title="isFieldPinned(f.key) ? '取消置顶' : '置顶固定到顶部看板'"
+                    >
+                      <component :is="isFieldPinned(f.key) ? Pin : PinOff" class="w-3 h-3" />
+                    </button>
+                    <button
+                      class="btn-icon-action"
+                      :class="[isFieldInMemo(f.key) ? 'active-memo' : '']"
+                      @click="toggleMemoField(f.key)"
+                      :title="isFieldInMemo(f.key) ? '从备注专区移除' : '归集到备注特别说明区'"
+                    >
+                      <component :is="isFieldInMemo(f.key) ? FileMinus : FilePlus" class="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                <div class="card-val-line" :class="[f.formatted.isTranslated ? 'translated-text' : '']">
+                  {{ f.formatted.display }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 原始 JSON 签名快照 -->
+          <div v-if="activeDocTab === 'tab_json'" class="json-snapshot-wrapper">
+            <pre class="json-pre-box font-mono">{{ JSON.stringify(parsedData, null, 2) }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.2 SAP [@Ch_Udo_Form] 原生右侧工艺质量与物性标准专区侧边栏 -->
+      <div v-if="qualitySpecsFields.length > 0" class="quality-specs-sidebar" :class="[isSpecsSidebarOpen ? 'open' : 'collapsed']">
+        <div class="specs-sidebar-header" @click="isSpecsSidebarOpen = !isSpecsSidebarOpen">
+          <div class="specs-title-row">
+            <ShieldCheck class="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
+            <span class="specs-title">工艺与物性标准</span>
+            <span class="specs-badge-count">{{ qualitySpecsFields.length }}</span>
+          </div>
+          <button class="btn-specs-toggle" :title="isSpecsSidebarOpen ? '收起侧边栏' : '展开侧边栏'">
+            <span>{{ isSpecsSidebarOpen ? '收起 ▶' : '展开 ◀' }}</span>
+          </button>
+        </div>
+
+        <div v-show="isSpecsSidebarOpen" class="specs-items-scroll">
+          <div
+            v-for="spec in qualitySpecsFields"
+            :key="spec.key"
+            class="specs-item-row"
+          >
+            <span class="specs-label" :title="spec.key">{{ spec.label }}:</span>
+            <span class="specs-val" :class="[spec.formatted.isTranslated ? 'text-blue-700 font-semibold' : '']" :title="spec.formatted.display">
+              {{ spec.formatted.display }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 底部多重备注与说明专属收敛便签栏 (按 SAP 原始位置置底，100% 原始换行) -->
     <div v-if="processedMemoFields.length > 0" class="memo-bar-wrapper">
       <div class="memo-bar-header" @click="toggleMemoZone">
         <div class="memo-bar-left">
@@ -1199,158 +1443,6 @@ const openTransferDrawer = (tabKey: string = 'header') => {
           <div class="memo-card-content">
             {{ mf.value }}
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. 世界级明细表格一体化容器 (Tab 导航 + 行内搜索 + 密度调节 + 列定制) -->
-    <div class="table-unified-card">
-      <div class="table-toolbar-row">
-        <!-- Tab 切换 -->
-        <div class="table-tabs-group">
-          <button
-            v-for="(c, cIdx) in processedCollections"
-            :key="c.key"
-            :class="['table-tab-item', activeDocTab === ('tab_table_' + cIdx) ? 'active' : '']"
-            @click="activeDocTab = 'tab_table_' + cIdx"
-          >
-            <Layers class="w-3.5 h-3.5 mr-1.5" />
-            <span>{{ c.label }}</span>
-            <span class="tab-badge-count">{{ c.processedRows.length }}</span>
-          </button>
-
-          <button
-            :class="['table-tab-item', activeDocTab === 'tab_header' ? 'active' : '']"
-            @click="activeDocTab = 'tab_header'"
-          >
-            <Tag class="w-3.5 h-3.5 mr-1.5" />
-            <span>对象主表属性</span>
-            <span class="tab-badge-count">{{ headerUdfFields.length }}</span>
-          </button>
-
-          <button
-            :class="['table-tab-item', activeDocTab === 'tab_json' ? 'active' : '']"
-            @click="activeDocTab = 'tab_json'"
-          >
-            <Code2 class="w-3.5 h-3.5 mr-1.5" />
-            <span>原始快照 (JSON)</span>
-          </button>
-        </div>
-
-        <!-- 表格右上角高效工具箱 (过滤、密度、列定制) -->
-        <div class="table-tools-group">
-          <!-- 实时行搜索 -->
-          <div v-if="activeDocTab.startsWith('tab_table_')" class="table-search-box">
-            <Search class="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
-            <input
-              v-model="tableSearchQuery"
-              placeholder="搜索物料/颜色/规格..."
-              class="table-search-input"
-            />
-            <button v-if="tableSearchQuery" class="btn-clear-search" @click="tableSearchQuery = ''">
-              <X class="w-3 h-3 text-slate-400" />
-            </button>
-          </div>
-
-          <!-- 密度切换器 -->
-          <div v-if="activeDocTab.startsWith('tab_table_')" class="density-switch-group">
-            <button
-              :class="['density-btn', tableDensity === 'compact' ? 'active' : '']"
-              @click="setTableDensity('compact')"
-              title="紧凑模式 (高密浏览)"
-            >
-              紧凑
-            </button>
-            <button
-              :class="['density-btn', tableDensity === 'normal' ? 'active' : '']"
-              @click="setTableDensity('normal')"
-              title="标准模式"
-            >
-              标准
-            </button>
-            <button
-              :class="['density-btn', tableDensity === 'comfortable' ? 'active' : '']"
-              @click="setTableDensity('comfortable')"
-              title="舒适模式"
-            >
-              宽松
-            </button>
-          </div>
-
-          <!-- 字段与列定制唯一统一全局入口 (可配置主表、行表、备注归集与呈现模式) -->
-          <button
-            class="btn-col-customize-pill"
-            @click="openUnifiedCustomizationDrawer"
-            title="统一配置对象主表属性、子表明细列、备注归集与关联字典显示模式"
-          >
-            <SlidersHorizontal class="w-3 h-3 text-blue-600 mr-1" />
-            <span>字段与列定制</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 表格内容主体 (Sticky 表头 + 虚拟沉浸式滚动) -->
-      <div class="table-viewport-wrapper">
-        <template v-for="(c, cIdx) in processedCollections" :key="c.key">
-          <ChildTableView v-if="activeDocTab === ('tab_table_' + cIdx)" :collection="c" :tableDensity="tableDensity" />
-        </template>
-
-        <!-- 对象主表属性网格 -->
-        <div v-if="activeDocTab === 'tab_header'" class="header-fields-wrapper">
-          <div class="header-fields-filter-bar">
-            <Search class="w-3.5 h-3.5 text-slate-400 mr-2" />
-            <input
-              v-model="searchUdf"
-              placeholder="搜索对象主表属性名 / 描述 / 取值..."
-              class="header-search-input"
-            />
-            
-          </div>
-
-          <div class="modern-fields-grid">
-            <div
-              v-for="f in headerUdfFields"
-              :key="f.key"
-              class="modern-field-card"
-              :class="[isFieldPinned(f.key) ? 'pinned' : '']"
-            >
-              <div class="card-top-line">
-                <span class="field-title" :title="f.key">{{ f.label }}</span>
-                <span v-if="f.key !== f.label" class="field-key-code font-mono">{{ f.key }}</span>
-                <div class="card-mini-actions">
-                  <button
-                    class="btn-icon-action"
-                    :class="[isFieldPinned(f.key) ? 'active' : '']"
-                    @click="togglePinField(f.key)"
-                    :title="isFieldPinned(f.key) ? '取消置顶' : '置顶固定到顶部看板'"
-                  >
-                    <component :is="isFieldPinned(f.key) ? Pin : PinOff" class="w-3 h-3" />
-                  </button>
-                  <button
-                    class="btn-icon-action"
-                    :class="[isFieldInMemo(f.key) ? 'active-memo' : '']"
-                    @click="toggleMemoField(f.key)"
-                    :title="isFieldInMemo(f.key) ? '从备注区移出' : '归入多重备注区'"
-                  >
-                    <FileText class="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-              <div class="card-value-box">
-                <span v-if="f.formatted.isTranslated" class="val-translated">
-                  {{ f.formatted.display }}
-                </span>
-                <span v-else class="val-normal">
-                  {{ f.formatted.display }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 原始 JSON 签名快照 -->
-        <div v-if="activeDocTab === 'tab_json'" class="json-snapshot-wrapper">
-          <pre class="json-pre-box font-mono">{{ JSON.stringify(parsedData, null, 2) }}</pre>
         </div>
       </div>
     </div>
@@ -1602,10 +1694,17 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 
           <!-- 抽屉底部操作栏 -->
           <div class="drawer-footer">
-            <button class="btn-restore-default" @click="resetAllLayoutToFactoryDefault">
-              <RotateCcw class="w-4 h-4 mr-1" />
-              <span>恢复全公司默认</span>
-            </button>
+            <div class="footer-left-btns">
+              <button class="btn-restore-default" @click="resetAllLayoutToFactoryDefault">
+                <RotateCcw class="w-3.5 h-3.5 mr-1" />
+                <span>恢复全公司默认</span>
+              </button>
+
+              <button class="btn-sync-sap" @click="syncFromSapUserFormSettings" :disabled="isSyncingSap" title="从 SAP 数据库 CPRF 表读取当前操作员在客户端中自定义的列顺序与隐藏状态">
+                <RefreshCw class="w-3.5 h-3.5 mr-1" :class="[isSyncingSap ? 'animate-spin' : '']" />
+                <span>{{ isSyncingSap ? '正在同步 SAP...' : '从 SAP 继承我的排版 (CPRF)' }}</span>
+              </button>
+            </div>
 
             <div class="footer-save-btns">
               <button
@@ -1893,7 +1992,17 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   font-family: inherit;
 }
 
-/* 3. 一体化表格视窗容器 (Flex 1 自适应填满，高度永远贴合屏幕) */
+/* 2. 中间双栏自适应分栏容器 (左侧表格 Matrix + 右侧 SAP 原生工艺质检标准侧边栏) */
+.doc-body-split-pane {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 200px;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 2.1 一体化表格视窗容器 (Flex 1 自适应填满，高度永远贴合屏幕) */
 .table-unified-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -1905,6 +2014,122 @@ const openTransferDrawer = (tabKey: string = 'header') => {
   height: 0;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* 2.2 SAP [@Ch_Udo_Form] 原生右侧工艺质量与物性标准侧边栏 */
+.quality-specs-sidebar {
+  width: 230px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.quality-specs-sidebar.collapsed {
+  width: 38px;
+}
+
+.specs-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.specs-title-row {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.specs-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.specs-badge-count {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  padding: 0 4px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.btn-specs-toggle {
+  background: transparent;
+  border: none;
+  font-size: 10px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.btn-specs-toggle:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.specs-items-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.specs-items-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.specs-items-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.specs-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 6px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 3px;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.specs-label {
+  color: #64748b;
+  font-size: 10.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.specs-val {
+  color: #0f172a;
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table-toolbar-row {

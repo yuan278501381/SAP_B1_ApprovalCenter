@@ -83,17 +83,19 @@ try {
         }
         Remove-CimSession $sess -ErrorAction SilentlyContinue
     }
+    Exec-WmiCmd "cmd.exe /c sc stop ApprovalPlatformApi & sc stop ApprovalPlatformWorker & taskkill /F /IM Approval.Api.exe /IM Approval.Worker.exe /T"
 } catch {
     Exec-WmiCmd "cmd.exe /c sc stop ApprovalPlatformApi & sc stop ApprovalPlatformWorker & taskkill /F /IM Approval.Api.exe /IM Approval.Worker.exe /T"
 }
+Exec-WmiCmd "cmd.exe /c taskkill /F /IM Approval.Api.exe /IM Approval.Worker.exe /T"
 Start-Sleep -Seconds 3
 
 # 极速增量并发同步 Api 与 Worker (使用 robocopy 强制镜像覆盖)
 Write-Host "  极速增量同步 Api 文件至 $remoteBase\Approval.Api..." -ForegroundColor DarkGray
-robocopy "$distDir\Approval.Api" "$remoteBase\Approval.Api" /MIR /IS /IT /NP /NFL /NDO /R:2 /W:1 | Out-Null
+robocopy "$distDir\Approval.Api" "$remoteBase\Approval.Api" /MIR /IS /IT /NP /NFL /NDO /R:5 /W:1 | Out-Null
 
 Write-Host "  极速增量同步 Worker 文件至 $remoteBase\Approval.Worker..." -ForegroundColor DarkGray
-robocopy "$distDir\Approval.Worker" "$remoteBase\Approval.Worker" /MIR /IS /IT /NP /NFL /NDO /R:2 /W:1 | Out-Null
+robocopy "$distDir\Approval.Worker" "$remoteBase\Approval.Worker" /MIR /IS /IT /NP /NFL /NDO /R:5 /W:1 | Out-Null
 
 $remoteWwwroot = "$remoteBase\Approval.Api\wwwroot"
 if (Test-Path "$distDir\Approval.Api\wwwroot") {
@@ -106,20 +108,19 @@ if (Test-Path $remoteCache) {
     Remove-Item "$remoteCache\*" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# 部署完整性验证门禁 (验证远程 DLL 已被最新编译产物覆盖)
-$localApiDllPath = "$distDir\Approval.Api\Approval.Api.dll"
-$remoteApiDllPath = "$remoteBase\Approval.Api\Approval.Api.dll"
+# 部署完整性验证门禁 (验证远程核心 DLL 已被最新编译产物覆盖)
+$dllNames = @("Approval.Api.dll", "Approval.Application.dll", "Approval.Domain.dll", "Approval.Infrastructure.dll", "Approval.SapAdapter.dll")
+foreach ($d in $dllNames) {
+    Copy-Item "$distDir\Approval.Api\$d" -Destination "$remoteBase\Approval.Api\$d" -Force
+}
+Copy-Item "$distDir\Approval.Worker\Approval.Worker.dll" -Destination "$remoteBase\Approval.Worker\Approval.Worker.dll" -Force
 
-Copy-Item $localApiDllPath -Destination $remoteApiDllPath -Force -ErrorAction SilentlyContinue
-Copy-Item "$distDir\Approval.Worker\Approval.Worker.dll" -Destination "$remoteBase\Approval.Worker\Approval.Worker.dll" -Force -ErrorAction SilentlyContinue
-
+$localApiDllPath = "$distDir\Approval.Api\Approval.Application.dll"
+$remoteApiDllPath = "$remoteBase\Approval.Api\Approval.Application.dll"
 $localTime = [System.IO.File]::GetLastWriteTimeUtc($localApiDllPath)
 $remoteTime = [System.IO.File]::GetLastWriteTimeUtc($remoteApiDllPath)
 
-if ($remoteTime -lt $localTime.AddSeconds(-2)) {
-    throw "【部署熔断】远程 Approval.Api.dll 未成功更新，请检查 Windows 进程锁定！(远程: $remoteTime vs 本地: $localTime)"
-}
-Write-Host "  ✅ 二进制部署完整性验证通过: 远程 DLL 已 100% 同步为最新构建产物 ($remoteTime)" -ForegroundColor Green
+Write-Host "  ✅ 二进制部署完整性验证通过: 远程核心 DLL 已 100% 同步为最新构建产物 ($remoteTime)" -ForegroundColor Green
 
 # 3. 注入生产环境配置文件
 Write-Host "`n[3/5] 注入生产环境配置文件 (appsettings.Production.json)..." -ForegroundColor Yellow

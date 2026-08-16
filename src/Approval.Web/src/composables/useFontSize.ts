@@ -1,108 +1,120 @@
 import { ref } from 'vue'
 
-export type FontSizeLevel = 'compact' | 'standard' | 'comfortable' | 'large'
-
-export interface FontSizeOption {
-  value: FontSizeLevel
+export interface FontScalePreset {
+  value: number
   label: string
   shortLabel: string
-  scalePercent: string
   description: string
-  samplePx: string
 }
 
-export const FONT_SIZE_OPTIONS: FontSizeOption[] = [
+export const FONT_SCALE_PRESETS: FontScalePreset[] = [
   {
-    value: 'compact',
+    value: 90,
     label: '紧凑模式',
     shortLabel: '紧凑 (90%)',
-    scalePercent: '90%',
-    description: '高信息密度，适合 1080p 笔记本与密集核算',
-    samplePx: '11.5px'
+    description: '适合 1080p 笔记本与密集单据核对'
   },
   {
-    value: 'standard',
+    value: 100,
     label: '标准模式',
     shortLabel: '标准 (100%)',
-    scalePercent: '100%',
-    description: '官方推荐出厂标准，平衡典雅',
-    samplePx: '13px'
+    description: '官方推荐出厂标准，平衡典雅'
   },
   {
-    value: 'comfortable',
+    value: 115,
     label: '舒适大字',
-    shortLabel: '舒适 (112%)',
-    scalePercent: '112%',
-    description: '清晰轻松，适合 2K/4K 屏幕日常审阅',
-    samplePx: '14.5px'
+    shortLabel: '舒适 (115%)',
+    description: '清晰轻松，适合 2K/4K 屏幕日常审阅'
   },
   {
-    value: 'large',
+    value: 125,
     label: '特大字号',
     shortLabel: '特大 (125%)',
-    scalePercent: '125%',
-    description: '视力关怀，适合高管大屏审阅与高分屏',
-    samplePx: '16px'
+    description: '视力关怀，适合年长高管大屏审阅'
   }
 ]
 
-// 全局响应式字号状态
-const currentFontSize = ref<FontSizeLevel>('standard')
+// 最小与最大滑动范围
+export const MIN_FONT_SCALE = 85
+export const MAX_FONT_SCALE = 135
+export const DEFAULT_FONT_SCALE = 100
+
+// 全局响应式字号缩放比例 (85 ~ 135)
+const currentFontScale = ref<number>(DEFAULT_FONT_SCALE)
 const currentUsername = ref<string>('manager')
 
 /**
- * 应用字号到 DOM 根节点并持久化
+ * 应用缩放比例到 DOM 根节点
  */
-const applyFontSizeToDom = (size: FontSizeLevel) => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-font-size', size)
-  }
+const applyFontScaleToDom = (scale: number) => {
+  if (typeof document === 'undefined') return
+  
+  const factor = scale / 100
+  document.documentElement.style.setProperty('--app-font-scale', factor.toString())
+  
+  // 匹配档位名
+  let level = 'standard'
+  if (scale <= 92) level = 'compact'
+  else if (scale >= 122) level = 'large'
+  else if (scale >= 110) level = 'comfortable'
+  
+  document.documentElement.setAttribute('data-font-size', level)
 }
 
 /**
- * 加载特定账号的字号偏好 (按账号隔离)
+ * 加载特定账号的字号偏好 (按账号物理隔离)
  */
 export const loadUserFontSize = (username: string) => {
   currentUsername.value = username || 'manager'
-  const saved = localStorage.getItem(`sap_b1_font_scale_${currentUsername.value}`) as FontSizeLevel
-  if (saved && ['compact', 'standard', 'comfortable', 'large'].includes(saved)) {
-    currentFontSize.value = saved
-  } else {
-    // 兼容旧的全局配置，否则默认 standard
-    const legacy = localStorage.getItem('sap_b1_global_font_scale') as FontSizeLevel
-    currentFontSize.value = (legacy && ['compact', 'standard', 'comfortable', 'large'].includes(legacy)) ? legacy : 'standard'
+  
+  // 1. 优先读取数值百分比配置
+  const savedPct = localStorage.getItem(`sap_b1_font_scale_pct_${currentUsername.value}`)
+  if (savedPct) {
+    const num = parseInt(savedPct, 10)
+    if (!isNaN(num) && num >= MIN_FONT_SCALE && num <= MAX_FONT_SCALE) {
+      currentFontScale.value = num
+      applyFontScaleToDom(currentFontScale.value)
+      return
+    }
   }
-  applyFontSizeToDom(currentFontSize.value)
+
+  // 2. 兼容历史的档位命名
+  const savedLevel = localStorage.getItem(`sap_b1_font_scale_${currentUsername.value}`)
+  if (savedLevel === 'compact') currentFontScale.value = 90
+  else if (savedLevel === 'comfortable') currentFontScale.value = 115
+  else if (savedLevel === 'large') currentFontScale.value = 125
+  else currentFontScale.value = DEFAULT_FONT_SCALE
+
+  applyFontScaleToDom(currentFontScale.value)
 }
 
 /**
  * 设置特定账号的字号偏好并保存
  */
-export const setUserFontSize = (size: FontSizeLevel, username?: string) => {
+export const setUserFontScale = (scale: number, username?: string) => {
   const user = username || currentUsername.value || 'manager'
-  currentFontSize.value = size
-  localStorage.setItem(`sap_b1_font_scale_${user}`, size)
-  applyFontSizeToDom(size)
+  const clamped = Math.max(MIN_FONT_SCALE, Math.min(MAX_FONT_SCALE, Math.round(scale)))
+  currentFontScale.value = clamped
+  localStorage.setItem(`sap_b1_font_scale_pct_${user}`, clamped.toString())
+  applyFontScaleToDom(clamped)
 }
 
 /**
- * 循环切换下一档字号
+ * 步进调整 (+5% 或 -5%)
  */
-export const cycleUserFontSize = (username?: string) => {
-  const order: FontSizeLevel[] = ['compact', 'standard', 'comfortable', 'large']
-  const curIdx = order.indexOf(currentFontSize.value)
-  const nextIdx = (curIdx + 1) % order.length
-  setUserFontSize(order[nextIdx], username)
-  return order[nextIdx]
+export const stepUserFontScale = (delta: number, username?: string) => {
+  setUserFontScale(currentFontScale.value + delta, username)
 }
 
 export function useFontSize() {
   return {
-    currentFontSize,
+    currentFontScale,
     currentUsername,
-    fontSizeOptions: FONT_SIZE_OPTIONS,
-    setUserFontSize,
-    loadUserFontSize,
-    cycleUserFontSize
+    minScale: MIN_FONT_SCALE,
+    maxScale: MAX_FONT_SCALE,
+    presets: FONT_SCALE_PRESETS,
+    setUserFontScale,
+    stepUserFontScale,
+    loadUserFontSize
   }
 }

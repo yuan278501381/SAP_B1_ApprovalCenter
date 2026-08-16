@@ -10,16 +10,16 @@ public class WorkflowInstanceStateMachineTests
     [Fact]
     public void WorkflowInstance_ShouldInitialize_WithDefaultState()
     {
-        var instance = new WorkflowInstance
-        {
-            CompanyId = "DB_KCC",
-            ObjectCode = "CHORDR",
-            ObjectKey = "1001",
-            Title = "中山市互森服饰有限公司 (C02503)",
-            SubmitterCode = "MGR01",
-            Status = WorkflowStatus.Running,
-            CurrentVersionId = "ver_101"
-        };
+        var instance = WorkflowInstance.Create(
+            "DB_KCC",
+            "CHORDR",
+            "1001",
+            "中山市互森服饰有限公司 (C02503)",
+            "MGR01",
+            null,
+            "ver_101",
+            DateTime.UtcNow
+        );
 
         instance.Status.Should().Be(WorkflowStatus.Running);
         instance.ObjectCode.Should().Be("CHORDR");
@@ -31,51 +31,46 @@ public class WorkflowInstanceStateMachineTests
     [Fact]
     public void WorkflowInstance_ShouldSupportCompletionStatusTransitions()
     {
-        var instance = new WorkflowInstance
-        {
-            CompanyId = "DB_KCC",
-            ObjectCode = "CHORDR",
-            ObjectKey = "1002",
-            Status = WorkflowStatus.Running
-        };
+        var instance = WorkflowInstance.Create(
+            "DB_KCC",
+            "CHORDR",
+            "1002",
+            "Title",
+            "Submitter",
+            "Name",
+            "ver_1",
+            DateTime.UtcNow
+        );
 
         // 1. 通过
-        instance.Status = WorkflowStatus.Approved;
-        instance.FinishedAt = DateTime.UtcNow;
-        instance.PostedDocEntry = "2001";
-        instance.PostedDocNum = "SO-2026-0001";
+        instance.MarkApproved(DateTime.UtcNow);
+        instance.SetPostedDocument("2001", "SO-2026-0001");
 
         instance.Status.Should().Be(WorkflowStatus.Approved);
         instance.PostedDocEntry.Should().Be("2001");
         instance.FinishedAt.Should().NotBeNull();
 
         // 2. 驳回
-        var rejectInstance = new WorkflowInstance
-        {
-            Status = WorkflowStatus.Rejected,
-            FinishedAt = DateTime.UtcNow
-        };
+        var rejectInstance = WorkflowInstance.Create("DB_KCC", "CHORDR", "1003", "Title", "Sub", "Name", "ver_1", DateTime.UtcNow);
+        rejectInstance.MarkRejected(DateTime.UtcNow);
         rejectInstance.Status.Should().Be(WorkflowStatus.Rejected);
 
         // 3. 撤回
-        var cancelInstance = new WorkflowInstance
-        {
-            Status = WorkflowStatus.Cancelled,
-            FinishedAt = DateTime.UtcNow
-        };
+        var cancelInstance = WorkflowInstance.Create("DB_KCC", "CHORDR", "1004", "Title", "Sub", "Name", "ver_1", DateTime.UtcNow);
+        cancelInstance.MarkCancelled(DateTime.UtcNow);
         cancelInstance.Status.Should().Be(WorkflowStatus.Cancelled);
     }
 
     [Fact]
     public void WorkflowTask_ShouldTrackCandidateAndDecisions()
     {
-        var task = new WorkflowTask
-        {
-            InstanceId = "inst_01",
-            NodeInstanceId = "node_01",
-            TaskType = TaskType.Approve,
-            Status = Approval.Domain.Enums.TaskStatus.Pending
-        };
+        var task = WorkflowTask.Create(
+            "inst_01",
+            "node_01",
+            TaskType.Approve,
+            DateTime.UtcNow,
+            null
+        );
 
         task.Candidates.Add(new WorkflowTaskCandidate
         {
@@ -89,11 +84,7 @@ public class WorkflowInstanceStateMachineTests
         task.Candidates[0].UserCode.Should().Be("MGR_FINANCE");
 
         // 完成审批任务
-        task.Status = Approval.Domain.Enums.TaskStatus.Completed;
-        task.Decision = TaskDecision.Approve;
-        task.Comments = "符合财务预算，予以核准通过";
-        task.CompletedBy = "MGR_FINANCE";
-        task.CompletedAt = DateTime.UtcNow;
+        task.Approve("MGR_FINANCE", "符合财务预算，予以核准通过", DateTime.UtcNow);
 
         task.Status.Should().Be(Approval.Domain.Enums.TaskStatus.Completed);
         task.Decision.Should().Be(TaskDecision.Approve);

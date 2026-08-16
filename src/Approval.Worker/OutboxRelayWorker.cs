@@ -108,10 +108,7 @@ public class OutboxRelayWorker : BackgroundService
 
                                 var inst = await db.Instances.FirstOrDefaultAsync(i => i.Id == instanceId, ct);
                                 if (inst != null)
-                                {
-                                    inst.PostedDocEntry = postedEntry;
-                                    inst.PostedDocNum = postedNum;
-                                }
+                                    inst.SetPostedDocument(postedEntry, postedNum);
                             }
                         }
                         // 2. 若为日记账凭证批 (Journal Vouchers)：自动调用 Service Layer 记账过账

@@ -181,7 +181,7 @@ public class AllControllersUnitCoverageTests : IDisposable
 
         var httpContext = new DefaultHttpContext { User = user };
 
-        var controller = new TasksController(_engine, _db, _traceContext)
+        var controller = new TasksController(_engine, _db, _traceContext, new Microsoft.Extensions.Logging.Abstractions.NullLogger<TasksController>())
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

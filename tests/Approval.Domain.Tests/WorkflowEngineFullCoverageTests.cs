@@ -133,7 +133,8 @@ public class WorkflowEngineFullCoverageTests : IDisposable
         await actNotFound.Should().ThrowAsync<KeyNotFoundException>();
 
         // 2. 非 Running 状态
-        var inst = new WorkflowInstance { Status = WorkflowStatus.Approved, SubmitterCode = "U1" };
+        var inst = WorkflowInstance.Create("DB", "OBJ", "KEY", "TITLE", "U1", "名", "v1", DateTime.UtcNow);
+        inst.MarkApproved(DateTime.UtcNow);
         _db.Instances.Add(inst);
         await _db.SaveChangesAsync();
 

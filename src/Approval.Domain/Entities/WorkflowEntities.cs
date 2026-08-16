@@ -28,6 +28,66 @@ public class WorkflowInstance
     public List<WorkflowNodeInstance> NodeInstances { get; set; } = new();
     public List<WorkflowTask> Tasks { get; set; } = new();
     public List<WorkflowActionLog> ActionLogs { get; set; } = new();
+
+    public WorkflowInstance() { } // For EF Core
+
+    public static WorkflowInstance Create(string companyId, string objectCode, string objectKey, string title, string submitterCode, string? submitterName, string currentVersionId, DateTime createdAt)
+    {
+        return new WorkflowInstance
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            CompanyId = companyId,
+            ObjectCode = objectCode,
+            ObjectKey = objectKey,
+            Title = title,
+            SubmitterCode = submitterCode,
+            SubmitterName = submitterName,
+            Status = WorkflowStatus.Running,
+            CurrentVersionId = currentVersionId,
+            CreatedAt = createdAt
+        };
+    }
+
+    public void AddSnapshot(WorkflowSnapshot snapshot)
+    {
+        Snapshot = snapshot;
+    }
+
+    public void MarkSuperseded(DateTime finishedAt)
+    {
+        Status = WorkflowStatus.Superceded;
+        FinishedAt = finishedAt;
+    }
+
+    public void MarkRejected(DateTime finishedAt)
+    {
+        Status = WorkflowStatus.Rejected;
+        FinishedAt = finishedAt;
+    }
+
+    public void MarkReturned(DateTime finishedAt)
+    {
+        Status = WorkflowStatus.Returned;
+        FinishedAt = finishedAt;
+    }
+
+    public void MarkApproved(DateTime finishedAt)
+    {
+        Status = WorkflowStatus.Approved;
+        FinishedAt = finishedAt;
+    }
+
+    public void MarkCancelled(DateTime finishedAt)
+    {
+        Status = WorkflowStatus.Cancelled;
+        FinishedAt = finishedAt;
+    }
+
+    public void SetPostedDocument(string? docEntry, string? docNum)
+    {
+        PostedDocEntry = docEntry;
+        PostedDocNum = docNum;
+    }
 }
 
 /// <summary>
@@ -60,6 +120,28 @@ public class WorkflowNodeInstance
 
     public WorkflowInstance? Instance { get; set; }
     public List<WorkflowTask> Tasks { get; set; } = new();
+
+    public WorkflowNodeInstance() { }
+
+    public static WorkflowNodeInstance Create(string instanceId, string nodeKey, string nodeName, NodeType nodeType, DateTime startedAt)
+    {
+        return new WorkflowNodeInstance
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            InstanceId = instanceId,
+            NodeKey = nodeKey,
+            NodeName = nodeName,
+            NodeType = nodeType,
+            Status = NodeStatus.Active,
+            StartedAt = startedAt
+        };
+    }
+
+    public void Complete(DateTime completedAt)
+    {
+        Status = NodeStatus.Completed;
+        CompletedAt = completedAt;
+    }
 }
 
 /// <summary>
@@ -83,6 +165,63 @@ public class WorkflowTask
     public WorkflowInstance? Instance { get; set; }
     public WorkflowNodeInstance? NodeInstance { get; set; }
     public List<WorkflowTaskCandidate> Candidates { get; set; } = new();
+
+    public WorkflowTask() { } // For EF Core
+
+    public static WorkflowTask Create(string instanceId, string nodeInstanceId, TaskType taskType, DateTime createdAt, DateTime? dueAt)
+    {
+        return new WorkflowTask
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            InstanceId = instanceId,
+            NodeInstanceId = nodeInstanceId,
+            TaskType = taskType,
+            Status = Approval.Domain.Enums.TaskStatus.Pending,
+            CreatedAt = createdAt,
+            DueAt = dueAt
+        };
+    }
+
+    public void Approve(string operatorCode, string? comments, DateTime completedAt)
+    {
+        if (Status != Approval.Domain.Enums.TaskStatus.Pending)
+            throw new InvalidOperationException($"任务状态 {Status} 不允许审批");
+        Status = Approval.Domain.Enums.TaskStatus.Completed;
+        Decision = TaskDecision.Approve;
+        CompletedBy = operatorCode;
+        Comments = comments;
+        CompletedAt = completedAt;
+    }
+
+    public void Reject(string operatorCode, string? comments, DateTime completedAt)
+    {
+        if (Status != Approval.Domain.Enums.TaskStatus.Pending)
+            throw new InvalidOperationException($"任务状态 {Status} 不允许驳回");
+        Status = Approval.Domain.Enums.TaskStatus.Completed;
+        Decision = TaskDecision.Reject;
+        CompletedBy = operatorCode;
+        Comments = comments;
+        CompletedAt = completedAt;
+    }
+
+    public void Return(string operatorCode, string? comments, DateTime completedAt)
+    {
+        if (Status != Approval.Domain.Enums.TaskStatus.Pending)
+            throw new InvalidOperationException($"任务状态 {Status} 不允许退回");
+        Status = Approval.Domain.Enums.TaskStatus.Completed;
+        Decision = TaskDecision.Return;
+        CompletedBy = operatorCode;
+        Comments = comments;
+        CompletedAt = completedAt;
+    }
+
+    public void Cancel(string? comments)
+    {
+        if (Status != Approval.Domain.Enums.TaskStatus.Pending)
+            throw new InvalidOperationException($"任务状态 {Status} 不允许作废");
+        Status = Approval.Domain.Enums.TaskStatus.Cancelled;
+        Comments = comments;
+    }
 }
 
 /// <summary>

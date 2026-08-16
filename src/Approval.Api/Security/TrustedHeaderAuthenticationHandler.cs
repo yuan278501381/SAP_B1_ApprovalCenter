@@ -65,6 +65,60 @@ public sealed class TrustedHeaderAuthenticationHandler : AuthenticationHandler<A
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
+        // 5. 增加 HMAC 签名校验
+        var enableHmacValidation = configuration.GetValue<bool>("Authentication:EnableHmacValidation");
+        if (enableHmacValidation)
+        {
+            var sharedSecret = configuration["Authentication:SharedSecret"];
+            if (string.IsNullOrWhiteSpace(sharedSecret))
+            {
+                Logger.LogError("服务器启用了 HMAC 校验，但未配置 SharedSecret");
+                return Task.FromResult(AuthenticateResult.Fail("服务器未配置 HMAC 共享密钥"));
+            }
+
+            var timestampStr = Request.Headers["X-Approval-Timestamp"].FirstOrDefault()?.Trim();
+            var signature = Request.Headers["X-Approval-Signature"].FirstOrDefault()?.Trim();
+
+            if (string.IsNullOrWhiteSpace(timestampStr) || string.IsNullOrWhiteSpace(signature))
+            {
+                Logger.LogWarning("请求缺少 HMAC 签名或时间戳请求头");
+                return Task.FromResult(AuthenticateResult.Fail("缺少签名或时间戳请求头"));
+            }
+
+            if (!long.TryParse(timestampStr, out var timestamp))
+            {
+                Logger.LogWarning("时间戳格式不正确: {Timestamp}", timestampStr);
+                return Task.FromResult(AuthenticateResult.Fail("时间戳格式不正确"));
+            }
+
+            var requestTime = timestampStr.Length == 13 
+                ? DateTimeOffset.FromUnixTimeMilliseconds(timestamp)
+                : DateTimeOffset.FromUnixTimeSeconds(timestamp);
+
+            if (Math.Abs((DateTimeOffset.UtcNow - requestTime).TotalMinutes) > 5)
+            {
+                Logger.LogWarning("请求时间戳已过期或偏差超过 5 分钟: {Timestamp}", timestampStr);
+                return Task.FromResult(AuthenticateResult.Fail("请求时间戳已过期或偏差超过 5 分钟"));
+            }
+
+            var payload = $"{userCode}:{timestampStr}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(sharedSecret));
+            var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+            
+            var expectedHex = Convert.ToHexString(hashBytes).ToLowerInvariant();
+            var expectedBase64 = Convert.ToBase64String(hashBytes);
+            var sigLower = signature.ToLowerInvariant();
+
+            bool isHexMatch = sigLower.Length == expectedHex.Length && FixedTimeEquals(sigLower, expectedHex);
+            bool isBase64Match = signature.Length == expectedBase64.Length && FixedTimeEquals(signature, expectedBase64);
+
+            if (!isHexMatch && !isBase64Match)
+            {
+                Logger.LogWarning("用户 {UserCode} 的 HMAC 签名校验失败", userCode);
+                return Task.FromResult(AuthenticateResult.Fail("HMAC 签名校验失败"));
+            }
+        }
+
         var userName = Request.Headers[NameHeader].FirstOrDefault()?.Trim()
                     ?? Request.Query["userName"].FirstOrDefault()?.Trim()
                     ?? userCode;

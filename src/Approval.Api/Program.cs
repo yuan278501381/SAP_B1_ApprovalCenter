@@ -209,6 +209,20 @@ try
     });
     app.UseCors("ApprovalWeb");
     app.UseAuthorization();
+    
+    // 全局异常拦截中间件 —— 统一脱敏并防止内部堆栈信息泄露到前端
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            var traceId = context.Request.Headers["X-Trace-Id"].FirstOrDefault() ?? "unknown";
+            var errorResponse = new { success = false, message = "服务器内部错误，请联系管理员", traceId };
+            await context.Response.WriteAsJsonAsync(errorResponse);
+        });
+    });
+
     app.MapHealthChecks("/health");
     app.MapControllers();
     app.MapFallbackToFile("index.html");

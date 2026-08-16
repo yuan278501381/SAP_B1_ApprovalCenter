@@ -7,10 +7,17 @@
 param(
     [string]$TargetIp = "192.168.134.9",
     [string]$AdminUser = "administrator",
-    [string]$AdminPassword = "123456@aA",
-    [string]$SqlSaPassword = "123456@a",
+    [string]$AdminPassword = $env:DEPLOY_ADMIN_PASSWORD,
+    [string]$SqlSaPassword = $env:DEPLOY_SQL_SA_PASSWORD,
     [int]$ServicePort = 5000
 )
+
+if ([string]::IsNullOrWhiteSpace($AdminPassword)) {
+    throw "【安全红线】请通过环境变量 DEPLOY_ADMIN_PASSWORD 提供管理员密码"
+}
+if ([string]::IsNullOrWhiteSpace($SqlSaPassword)) {
+    throw "【安全红线】请通过环境变量 DEPLOY_SQL_SA_PASSWORD 提供 SQL SA 密码"
+}
 
 $ErrorActionPreference = "Stop"
 $rootDir = (Get-Item $PSScriptRoot).Parent.FullName
@@ -104,7 +111,7 @@ $prodConfig = @"
       "BaseUrl": "https://127.0.0.1:50000/b1s/v1/",
       "CompanyDb": "DB_KCC",
       "UserName": "manager",
-      "Password": "1111",
+      "Password": "$env:DEPLOY_SAP_PASSWORD",
       "AllowInvalidServerCertificate": true,
       "MirrorEnabled": true,
       "Objects": [

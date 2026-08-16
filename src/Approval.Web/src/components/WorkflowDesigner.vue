@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api, { API_BASE } from '../config/request'
 import {
   GitFork,
   Users,
@@ -13,18 +13,6 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-vue-next'
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-const api = axios.create({ baseURL: API_BASE })
-
-// 注入请求头与 TraceId
-api.interceptors.request.use((config) => {
-  const user = localStorage.getItem('sap_b1_approval_user') || 'admin'
-  config.headers['X-Approval-User'] = user
-  config.headers['X-Approval-User-Name'] = user
-  config.headers['X-Trace-Id'] = 'trace_fe_designer_' + Math.random().toString(36).substring(2, 9)
-  return config
-})
 
 const definitions = ref<any[]>([])
 const activeDef = ref<any>(null)

@@ -428,6 +428,14 @@ public class SapMetadataService : ISapMetadataService
             foreach (var (rTable, targetList) in rTablesToLoad)
             {
                 var rTableName = rTable.StartsWith('@') ? rTable : $"@{rTable}";
+                
+                // 安全红线：对动态表名进行严格正则白名单校验，拒绝一切非法字符以防御 SQL 注入
+                if (!System.Text.RegularExpressions.Regex.IsMatch(rTableName, @"^[a-zA-Z0-9_@#]+$"))
+                {
+                    _logger.LogWarning("拒绝加载可疑表名 [{TableName}]，疑似 SQL 注入攻击", rTableName);
+                    continue;
+                }
+
                 try
                 {
                     var queryRTable = $"SELECT Code, Name FROM [{rTableName}];";

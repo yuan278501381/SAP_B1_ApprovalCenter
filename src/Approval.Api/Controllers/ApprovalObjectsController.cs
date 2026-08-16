@@ -19,17 +19,20 @@ public class ApprovalObjectsController : ControllerBase
     private readonly ISapAdapterRegistry _adapterRegistry;
     private readonly ApprovalDbContext _db;
     private readonly ITraceContext _traceContext;
+    private readonly ILogger<ApprovalObjectsController> _logger;
 
     public ApprovalObjectsController(
         IWorkflowEngine engine,
         ISapAdapterRegistry adapterRegistry,
         ApprovalDbContext db,
-        ITraceContext traceContext)
+        ITraceContext traceContext,
+        ILogger<ApprovalObjectsController> logger = null!)
     {
         _engine = engine;
         _adapterRegistry = adapterRegistry;
         _db = db;
         _traceContext = traceContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -118,7 +121,8 @@ public class ApprovalObjectsController : ControllerBase
         catch (Exception ex)
         {
             if (transaction != null) await transaction.RollbackAsync(ct);
-            return BadRequest(ApiResponse<object>.Fail("SUBMIT_FAILED", ex.Message, _traceContext.TraceId));
+            _logger.LogError(ex, "操作失败: {Message}", ex.Message);
+            return StatusCode(500, ApiResponse<object>.Fail("SERVER_ERROR", "服务器内部错误", _traceContext.TraceId));
         }
         finally
         {

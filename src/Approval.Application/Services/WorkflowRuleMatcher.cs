@@ -218,8 +218,9 @@ public sealed class WorkflowRuleMatcher : IWorkflowRuleMatcher
         {
             return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
         }
-        catch
+        catch (Exception ex)
         {
+            // 静态方法无 logger，记录详细注释：尝试解析 JSON 字符串列表时发生异常，降级返回空列表
             return new List<string>();
         }
     }
@@ -307,9 +308,9 @@ public sealed class WorkflowRuleMatcher : IWorkflowRuleMatcher
                 }
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
-                // 解析失败降级为简单金额判断
+                // 静态方法无 logger，记录详细注释：解析结构化 JSON 复合条件失败，降级为简单金额判断
             }
         }
 

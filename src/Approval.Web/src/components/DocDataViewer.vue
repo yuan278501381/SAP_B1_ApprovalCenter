@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
-import axios from 'axios'
+import api, { API_BASE } from '../config/request'
 import {
   appConfig,
   defaultPinnedFields,
@@ -28,20 +28,6 @@ import {
   ArrowRightLeft,
   CheckCheck
 } from 'lucide-vue-next'
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-const api = axios.create({ baseURL: API_BASE })
-
-// 拦截器自动注入当前操作员与 TraceID
-api.interceptors.request.use((config) => {
-  const user = localStorage.getItem('sap_b1_approval_user') || 'manager'
-  config.headers['X-Approval-User'] = user
-  config.headers['X-Approval-User-Name'] = user
-  if (!config.headers['X-Trace-Id']) {
-    config.headers['X-Trace-Id'] = 'trace_fe_' + Math.random().toString(36).substring(2, 9)
-  }
-  return config
-})
 
 const props = withDefaults(
   defineProps<{

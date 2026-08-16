@@ -24,17 +24,20 @@ public class WorkflowEngine : IWorkflowEngine
     private readonly ITraceContext _traceContext;
     private readonly IUserDirectoryService _userDirectoryService;
     private readonly IWorkflowRuleMatcher _ruleMatcher;
+    private readonly ISapAdapterRegistry _sapAdapterRegistry;
 
     public WorkflowEngine(
         IApprovalDbContext db,
         ITraceContext traceContext,
         IUserDirectoryService userDirectoryService,
-        IWorkflowRuleMatcher ruleMatcher)
+        IWorkflowRuleMatcher ruleMatcher,
+        ISapAdapterRegistry sapAdapterRegistry = null!)
     {
         _db = db;
         _traceContext = traceContext;
         _userDirectoryService = userDirectoryService;
         _ruleMatcher = ruleMatcher;
+        _sapAdapterRegistry = sapAdapterRegistry;
     }
 
     public async Task<WorkflowInstance> StartWorkflowAsync(
@@ -185,6 +188,15 @@ public class WorkflowEngine : IWorkflowEngine
         WorkflowGraphNode? nextNode = null;
         if (decision == TaskDecision.Approve)
         {
+            // 安全红线：审批通过前必须重新校验单据哈希以检测审批期间的篡改
+            var adapter = _sapAdapterRegistry.GetAdapter(instance.ObjectCode);
+            var latestPayload = await adapter.FetchObjectAsync(instance.CompanyId, instance.ObjectKey, ct);
+            var (_, latestHash) = CanonicalSnapshotBuilder.Build(latestPayload.RawJson);
+            if (latestHash != snapshot.DataSha256)
+            {
+                throw new InvalidOperationException("防篡改校验失败：单据在审批期间已被修改，请重新提交审批");
+            }
+
             var version = _db.DefinitionVersions.FirstOrDefault(v => v.Id == instance.CurrentVersionId)
                 ?? throw new InvalidOperationException($"实例引用的流程版本 {instance.CurrentVersionId} 不存在");
             var graph = ParseAndValidateGraph(version.GraphJson);
@@ -572,8 +584,9 @@ public class WorkflowEngine : IWorkflowEngine
                     return value;
             return 0m;
         }
-        catch
+        catch (Exception ex)
         {
+            // 静态方法无 logger，记录详细注释：尝试从 JSON 快照提取 DocTotal 时发生异常，降级返回 0m
             return 0m;
         }
     }

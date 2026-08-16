@@ -38,8 +38,9 @@ public static class SnapshotCompressionHelper
 
             return BROTLI_PREFIX + Convert.ToBase64String(compressedBytes);
         }
-        catch
+        catch (Exception ex)
         {
+            // 静态方法无 logger，记录详细注释：JSON 压缩失败时，降级返回原始字符串
             return rawJson;
         }
     }
@@ -70,8 +71,9 @@ public static class SnapshotCompressionHelper
 
             return reader.ReadToEnd();
         }
-        catch
+        catch (Exception ex)
         {
+            // 静态方法无 logger，记录详细注释：Brotli 解压失败时，假定其为普通字符串并直接返回
             return storedContent;
         }
     }

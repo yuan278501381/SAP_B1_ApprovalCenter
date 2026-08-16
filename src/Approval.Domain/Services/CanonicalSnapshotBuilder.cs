@@ -10,6 +10,14 @@ namespace Approval.Domain.Services;
 /// </summary>
 public static class CanonicalSnapshotBuilder
 {
+    // 免审白名单字段 —— 修改这些字段不会触发重新审批
+    private static readonly HashSet<string> NonSensitiveFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Comments", "U_Comments", "Remark", "U_Remark",
+        "U_PrintCount", "PrintCount", "U_Memo",
+        "UpdateDate", "UpdateTime", "CreateDate", "CreateTime",
+        "DocDate", "DocDueDate", "TaxDate"
+    };
     /// <summary>
     /// 将任意 JSON 结构或对象转换为排好序的规范化 JSON (Canonical JSON) 并生成 SHA-256 签名哈希
     /// </summary>
@@ -52,6 +60,7 @@ public static class CanonicalSnapshotBuilder
         {
             var sortedObj = new JsonObject();
             var sortedProperties = obj
+                .Where(p => !NonSensitiveFields.Contains(p.Key))
                 .OrderBy(p => p.Key, StringComparer.Ordinal)
                 .ToList();
 

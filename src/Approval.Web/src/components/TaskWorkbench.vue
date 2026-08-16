@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
+import api, { API_BASE } from '../config/request'
 import DocDataViewer from './DocDataViewer.vue'
 import { appConfig, sapObjectMap, fallbackSapObjectStyle } from '../config'
 import {
@@ -24,7 +25,6 @@ import {
   Building2
 } from 'lucide-vue-next'
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const launchParams = new URLSearchParams(window.location.search)
 const launchCompanyId = launchParams.get('companyId') || appConfig.defaultCompanyId
 const launchObjectCode = launchParams.get('objectCode')
@@ -116,18 +116,6 @@ const showNotifDrawer = ref(false)
 const notifications = ref<any[]>([])
 const unreadCount = ref(0)
 const notifLoading = ref(false)
-
-const api = axios.create({ baseURL: API_BASE })
-
-// 全局请求拦截器：无缝透传用户身份与链路追踪 TraceID
-api.interceptors.request.use((config) => {
-  config.headers['X-Approval-User'] = currentUser.value
-  config.headers['X-Approval-User-Name'] = currentUser.value
-  if (!config.headers['X-Trace-Id']) {
-    config.headers['X-Trace-Id'] = 'trace_fe_' + Math.random().toString(36).substring(2, 9)
-  }
-  return config
-})
 
 const onUserChange = () => {
   localStorage.setItem('sap_b1_approval_user', currentUser.value)

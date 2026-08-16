@@ -22,12 +22,14 @@ public class TasksController : ControllerBase
     private readonly IWorkflowEngine _engine;
     private readonly ApprovalDbContext _db;
     private readonly ITraceContext _traceContext;
+    private readonly ILogger<TasksController> _logger;
 
-    public TasksController(IWorkflowEngine engine, ApprovalDbContext db, ITraceContext traceContext)
+    public TasksController(IWorkflowEngine engine, ApprovalDbContext db, ITraceContext traceContext, ILogger<TasksController> logger = null!)
     {
         _engine = engine;
         _db = db;
         _traceContext = traceContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -280,7 +282,8 @@ public class TasksController : ControllerBase
         catch (Exception ex)
         {
             if (transaction != null) await transaction.RollbackAsync(ct);
-            return BadRequest(ApiResponse<object>.Fail("DECISION_FAILED", ex.Message, _traceContext.TraceId));
+            _logger.LogError(ex, "操作失败: {Message}", ex.Message);
+            return StatusCode(500, ApiResponse<object>.Fail("SERVER_ERROR", "服务器内部错误", _traceContext.TraceId));
         }
         finally
         {
@@ -317,7 +320,8 @@ public class TasksController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail("FORWARD_FAILED", ex.Message, _traceContext.TraceId));
+            _logger.LogError(ex, "操作失败: {Message}", ex.Message);
+            return StatusCode(500, ApiResponse<object>.Fail("SERVER_ERROR", "服务器内部错误", _traceContext.TraceId));
         }
     }
 

@@ -350,8 +350,6 @@ const QUALITY_SPECS_KEYS = [
   'U_COVERPAPER', 'U_PAGREQ', 'U_FREIGHT', 'U_DELIVER', 'U_MORECHECK', 'U_COLORCHECK'
 ]
 
-const isSpecsSidebarOpen = ref(true)
-
 const qualitySpecsFields = computed(() => {
   const data = parsedData.value
   if (!data) return []
@@ -706,6 +704,18 @@ const headerUdfFields = computed(() => {
   })
 })
 
+// 工艺与物性标准搜索与过滤
+const searchSpecs = ref('')
+const filteredQualitySpecsFields = computed(() => {
+  if (!searchSpecs.value.trim()) return qualitySpecsFields.value
+  const q = searchSpecs.value.toLowerCase().trim()
+  return qualitySpecsFields.value.filter(
+    f => f.label.toLowerCase().includes(q) ||
+         f.key.toLowerCase().includes(q) ||
+         f.formatted.display.toLowerCase().includes(q)
+  )
+})
+
 // 拖拽 Key 追踪
 
 
@@ -854,10 +864,11 @@ const syncFromSapUserFormSettings = async () => {
           collectionHiddenCols.value[c.key] = [...data.hiddenColumns]
         })
       }
-      syncLocalLayoutCache()
-      showDrawerToast(`已成功继承 [${user}] 在 SAP 客户端中配置的专属列顺序与隐藏偏好 (CPRF)！`, 'success')
+      const displayName = (user === 'admin' || user === 'administrator') ? `${user} (对应 SAP manager)` : user
+      showDrawerToast(`已成功继承 [${displayName}] 在 SAP 客户端中配置的专属列顺序与隐藏偏好 (CPRF)！`, 'success')
     } else {
-      showDrawerToast(`操作员 [${user}] 在 SAP CPRF 中暂无该单据专属排版记录，已维持当前推荐布局。`, 'success')
+      const displayName = (user === 'admin' || user === 'administrator') ? `${user} (对应 SAP manager)` : user
+      showDrawerToast(`操作员 [${displayName}] 在 SAP CPRF 中暂无该单据专属排版记录，已维持当前推荐布局。`, 'success')
     }
   } catch (err: any) {
     showDrawerToast(err.response?.data?.message || '同步 SAP 客户端偏好失败', 'error')
@@ -1266,6 +1277,16 @@ const openTransferDrawer = (tabKey: string = 'header') => {
             </button>
 
             <button
+              v-if="qualitySpecsFields.length > 0"
+              :class="['table-tab-item', activeDocTab === 'tab_specs' ? 'active' : '']"
+              @click="activeDocTab = 'tab_specs'"
+            >
+              <ShieldCheck class="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+              <span>工艺与物性标准</span>
+              <span class="tab-badge-count">{{ qualitySpecsFields.length }}</span>
+            </button>
+
+            <button
               :class="['table-tab-item', activeDocTab === 'tab_header' ? 'active' : '']"
               @click="activeDocTab = 'tab_header'"
             >
@@ -1327,6 +1348,34 @@ const openTransferDrawer = (tabKey: string = 'header') => {
             <ChildTableView v-if="activeDocTab === ('tab_table_' + cIdx)" :collection="c" :tableDensity="tableDensity" />
           </template>
 
+          <!-- 工艺与物性标准专属现代卡片网格 (高密排列，支持搜索过滤) -->
+          <div v-if="activeDocTab === 'tab_specs'" class="header-fields-wrapper">
+            <div class="header-fields-filter-bar">
+              <Search class="w-3.5 h-3.5 text-slate-400 mr-2" />
+              <input
+                v-model="searchSpecs"
+                placeholder="搜索工艺指标 / 质检标准 / 牢度 / 水洗 / 扭力..."
+                class="header-search-input"
+              />
+            </div>
+
+            <div class="modern-fields-grid">
+              <div
+                v-for="spec in filteredQualitySpecsFields"
+                :key="spec.key"
+                class="modern-field-card"
+              >
+                <div class="card-top-line">
+                  <span class="field-title" :title="spec.key">{{ spec.label }}</span>
+                  <span v-if="spec.key !== spec.label" class="field-key-code font-mono">{{ spec.key }}</span>
+                </div>
+                <div class="card-val-line" :class="[spec.formatted.isTranslated ? 'translated-text' : '']">
+                  {{ spec.formatted.display }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 对象主表属性网格 -->
           <div v-if="activeDocTab === 'tab_header'" class="header-fields-wrapper">
             <div class="header-fields-filter-bar">
@@ -1378,33 +1427,6 @@ const openTransferDrawer = (tabKey: string = 'header') => {
           <!-- 原始 JSON 签名快照 -->
           <div v-if="activeDocTab === 'tab_json'" class="json-snapshot-wrapper">
             <pre class="json-pre-box font-mono">{{ JSON.stringify(parsedData, null, 2) }}</pre>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.2 SAP [@Ch_Udo_Form] 原生右侧工艺质量与物性标准专区侧边栏 -->
-      <div v-if="qualitySpecsFields.length > 0" class="quality-specs-sidebar" :class="[isSpecsSidebarOpen ? 'open' : 'collapsed']">
-        <div class="specs-sidebar-header" @click="isSpecsSidebarOpen = !isSpecsSidebarOpen">
-          <div class="specs-title-row">
-            <ShieldCheck class="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
-            <span class="specs-title">工艺与物性标准</span>
-            <span class="specs-badge-count">{{ qualitySpecsFields.length }}</span>
-          </div>
-          <button class="btn-specs-toggle" :title="isSpecsSidebarOpen ? '收起侧边栏' : '展开侧边栏'">
-            <span>{{ isSpecsSidebarOpen ? '收起 ▶' : '展开 ◀' }}</span>
-          </button>
-        </div>
-
-        <div v-show="isSpecsSidebarOpen" class="specs-items-scroll">
-          <div
-            v-for="spec in qualitySpecsFields"
-            :key="spec.key"
-            class="specs-item-row"
-          >
-            <span class="specs-label" :title="spec.key">{{ spec.label }}:</span>
-            <span class="specs-val" :class="[spec.formatted.isTranslated ? 'text-blue-700 font-semibold' : '']" :title="spec.formatted.display">
-              {{ spec.formatted.display }}
-            </span>
           </div>
         </div>
       </div>

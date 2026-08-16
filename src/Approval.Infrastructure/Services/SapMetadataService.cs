@@ -655,6 +655,7 @@ public class SapMetadataService : ISapMetadataService
 
     /// <summary>
     /// 从 SAP B1 CPRF / OUSR 表获取用户针对指定单据在 SAP 客户端中配置的表格列显示顺序、列宽与隐藏列状态
+    /// (支持 admin/administrator 自动映射到 SAP manager，支持多候选 FormID 智能匹配与 manager 偏好回退)
     /// </summary>
     public async Task<UserFormSettingsResult> GetUserFormSettingsAsync(
         string companyId,
@@ -672,17 +673,27 @@ public class SapMetadataService : ISapMetadataService
         var sapConnStr = GetSapDbConnectionString(companyId);
         if (string.IsNullOrWhiteSpace(sapConnStr)) return result;
 
+        // 1. admin / administrator / sa 账号自动视为 SAP manager
+        var targetUser = userCode;
+        if (string.IsNullOrWhiteSpace(targetUser) ||
+            string.Equals(targetUser, "admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(targetUser, "administrator", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(targetUser, "sa", StringComparison.OrdinalIgnoreCase))
+        {
+            targetUser = "manager";
+        }
+
         try
         {
             await using var conn = new SqlConnection(sapConnStr);
             await conn.OpenAsync(ct);
 
-            // 1. 查询对应用户的 UserSign
-            int? userSign = null;
+            // 2. 查询对应用户的 UserSign (查不到则默认回退到 manager = 1)
+            int userSign = 1;
             await using (var cmdUser = conn.CreateCommand())
             {
                 cmdUser.CommandText = "SELECT TOP 1 USERID FROM OUSR WHERE USER_CODE = @UserCode";
-                cmdUser.Parameters.Add(new SqlParameter("@UserCode", SqlDbType.NVarChar) { Value = userCode });
+                cmdUser.Parameters.Add(new SqlParameter("@UserCode", SqlDbType.NVarChar) { Value = targetUser });
                 var res = await cmdUser.ExecuteScalarAsync(ct);
                 if (res != null && res != DBNull.Value)
                 {
@@ -690,32 +701,43 @@ public class SapMetadataService : ISapMetadataService
                 }
             }
 
-            if (!userSign.HasValue) return result;
-
-            // 2. 从 CPRF 查询表单格式 (匹配 UDO 或标准单据 FormID)
-            var columnList = new List<(string ColId, int VisualIndex, string VisInForm, int Width)>();
-            await using (var cmdCprf = conn.CreateCommand())
+            // 3. 计算 FormID 候选列表 (涵盖 UDO 辅助平台 FormID 与 SAP 标准 FormID)
+            var formIds = new List<string>();
+            var upperObj = objectCode.ToUpperInvariant();
+            if (upperObj.Contains("CHORDR") || upperObj.Contains("ORDER") || upperObj == "ORDR")
             {
-                cmdCprf.CommandText = @"
-                    SELECT ColID, VisualIndx, VisInForm, Width
-                    FROM CPRF
-                    WHERE UserSign = @UserSign
-                      AND (FormID LIKE '%' + @ObjCode + '%' OR FormID = @ObjCode OR FormID LIKE '%ORD%' OR FormID = '139')
-                      AND ColID IS NOT NULL AND ColID <> '' AND ColID <> '0'
-                    ORDER BY VisualIndx ASC";
-                cmdCprf.Parameters.Add(new SqlParameter("@UserSign", SqlDbType.SmallInt) { Value = (short)userSign.Value });
-                cmdCprf.Parameters.Add(new SqlParameter("@ObjCode", SqlDbType.NVarChar) { Value = objectCode });
+                formIds.AddRange(new[] { "CH_ORDR01", "CH_ORDR02", "CH_ORDR03", "139", "CHORDR" });
+            }
+            else if (upperObj.Contains("CHOQUT") || upperObj.Contains("QUOT") || upperObj == "OQUT")
+            {
+                formIds.AddRange(new[] { "CH_OQUT01", "CH_OQUT02", "149", "CHOQUT" });
+            }
+            else if (upperObj.Contains("INV") || upperObj == "OINV")
+            {
+                formIds.AddRange(new[] { "133", "OINV" });
+            }
+            else if (upperObj.Contains("DLN") || upperObj == "ODLN")
+            {
+                formIds.AddRange(new[] { "140", "ODLN" });
+            }
+            else if (upperObj.Contains("POR") || upperObj == "OPOR")
+            {
+                formIds.AddRange(new[] { "142", "OPOR" });
+            }
+            else if (upperObj.Contains("DRF") || upperObj == "ODRF")
+            {
+                formIds.AddRange(new[] { "112", "139", "ODRF" });
+            }
+            else
+            {
+                formIds.Add(objectCode);
+            }
 
-                await using var reader = await cmdCprf.ExecuteReaderAsync(ct);
-                while (await reader.ReadAsync(ct))
-                {
-                    var colId = reader.GetString(0);
-                    var visualIndx = reader.GetInt32(1);
-                    var visInForm = reader.IsDBNull(2) ? "Y" : reader.GetString(2).Trim();
-                    var width = reader.IsDBNull(3) ? 100 : reader.GetInt32(3);
-
-                    columnList.Add((colId, visualIndx, visInForm, width));
-                }
+            // 4. 从 CPRF 查询表单格式 (先查目标用户，若为空则回退到 manager = 1)
+            var columnList = await QueryCprfColumnsAsync(conn, userSign, formIds, ct);
+            if (columnList.Count == 0 && userSign != 1)
+            {
+                columnList = await QueryCprfColumnsAsync(conn, 1, formIds, ct);
             }
 
             if (columnList.Count > 0)
@@ -735,6 +757,39 @@ public class SapMetadataService : ISapMetadataService
         }
 
         return result;
+    }
+
+    private static async Task<List<(string ColId, int VisualIndex, string VisInForm, int Width)>> QueryCprfColumnsAsync(
+        SqlConnection conn,
+        int userSign,
+        List<string> formIds,
+        CancellationToken ct)
+    {
+        var columnList = new List<(string ColId, int VisualIndex, string VisInForm, int Width)>();
+        var formInClause = string.Join(",", formIds.Select(f => $"'{f}'"));
+
+        await using var cmdCprf = conn.CreateCommand();
+        cmdCprf.CommandText = $@"
+            SELECT ColID, VisualIndx, VisInForm, Width
+            FROM CPRF
+            WHERE UserSign = @UserSign
+              AND (FormID IN ({formInClause}) OR FormID LIKE '%ORD%')
+              AND ColID IS NOT NULL AND ColID <> '' AND ColID <> '0'
+            ORDER BY VisualIndx ASC";
+        cmdCprf.Parameters.Add(new SqlParameter("@UserSign", SqlDbType.SmallInt) { Value = (short)userSign });
+
+        await using var reader = await cmdCprf.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var colId = reader.GetString(0);
+            var visualIndx = reader.GetInt32(1);
+            var visInForm = reader.IsDBNull(2) ? "Y" : reader.GetString(2).Trim();
+            var width = reader.IsDBNull(3) ? 100 : reader.GetInt32(3);
+
+            columnList.Add((colId, visualIndx, visInForm, width));
+        }
+
+        return columnList;
     }
 
     /// <summary>

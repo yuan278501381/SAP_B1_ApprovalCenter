@@ -1,4 +1,5 @@
 using Approval.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Approval.Domain.Entities;
 
@@ -21,6 +22,8 @@ public class WorkflowInstance
     public string? TargetDocType { get; set; }     // 如果是草稿/凭证批，记录目标单据类型 (如 '13' 应收发票, '20' 采购收货)
     public string? PostedDocEntry { get; set; }    // 审批通过并成功过账后的正式单据 DocEntry
     public string? PostedDocNum { get; set; }      // 审批通过并成功过账后的正式单据 DocNum
+    /// <summary>乐观并发控制令牌</summary>
+    [Timestamp]
     public byte[]? RowVersion { get; set; }
 
     public WorkflowDefinitionVersion? CurrentVersion { get; set; }

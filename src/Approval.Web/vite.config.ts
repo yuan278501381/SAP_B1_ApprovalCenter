@@ -14,4 +14,28 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/vue-router')) {
+            return 'vendor-vue'
+          }
+          if (id.includes('node_modules/bpmn-js')) {
+            return 'vendor-bpmn'
+          }
+          if (id.includes('node_modules/@logicflow')) {
+            return 'vendor-logicflow'
+          }
+          if (id.includes('node_modules/axios')) {
+            return 'vendor-axios'
+          }
+          if (id.includes('node_modules/lucide-vue-next')) {
+            return 'vendor-lucide'
+          }
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600
+  }
 })

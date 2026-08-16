@@ -316,6 +316,14 @@ public class ApprovalDbContext : DbContext, IApprovalDbContext
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         foreach (var property in entity.GetProperties())
             property.SetColumnName(ToSnakeCase(property.Name));
+
+        modelBuilder.Entity<WorkflowInstance>()
+            .Property(e => e.RowVersion)
+            .IsRowVersion();
+
+        modelBuilder.Entity<WorkflowOutbox>()
+            .Property(e => e.RowVersion)
+            .IsRowVersion();
     }
 
     private static string ToSnakeCase(string value)

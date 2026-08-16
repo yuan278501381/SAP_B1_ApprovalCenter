@@ -194,3 +194,24 @@ input:focus, textarea:focus, select:focus {
   box-shadow: var(--shadow-sm);
   padding: 16px;
 }
+
+/* 移动端响应式基础断点 —— 预留高管移动审批场景 */
+@media (max-width: 768px) {
+  .workbench-three-pane {
+    flex-direction: column;
+  }
+  .pane-left-queue {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    max-height: 40vh;
+  }
+  .pane-center-doc {
+    width: 100% !important;
+  }
+  .pane-right-inspector {
+    width: 100% !important;
+  }
+}
+

@@ -4,6 +4,7 @@ using Approval.Application.Common.Interfaces;
 using Approval.Application.Common.Models;
 using Approval.Domain.Entities;
 using Approval.Domain.Enums;
+using Approval.Domain.Constants;
 using Approval.Domain.Services;
 using TaskStatus = Approval.Domain.Enums.TaskStatus;
 
@@ -217,19 +218,19 @@ public class WorkflowEngine : IWorkflowEngine
         {
             instance.MarkRejected(now);
             toStatus = WorkflowStatus.Rejected.ToString();
-            await AddOutboxAsync(instance, "InstanceRejected", toStatus, snapshot.DataSha256, ct);
+            await AddOutboxAsync(instance, BusinessConstants.OutboxEvents.InstanceRejected, toStatus, snapshot.DataSha256, ct);
         }
         else if (decision == TaskDecision.Return)
         {
             instance.MarkReturned(now);
             toStatus = WorkflowStatus.Returned.ToString();
-            await AddOutboxAsync(instance, "InstanceReturned", toStatus, snapshot.DataSha256, ct);
+            await AddOutboxAsync(instance, BusinessConstants.OutboxEvents.InstanceReturned, toStatus, snapshot.DataSha256, ct);
         }
         else if (nextNode!.NodeType == NodeType.End)
         {
             instance.MarkApproved(now);
             toStatus = WorkflowStatus.Approved.ToString();
-            await AddOutboxAsync(instance, "InstanceApproved", toStatus, snapshot.DataSha256, ct);
+            await AddOutboxAsync(instance, BusinessConstants.OutboxEvents.InstanceApproved, toStatus, snapshot.DataSha256, ct);
         }
         else
         {
@@ -453,7 +454,7 @@ public class WorkflowEngine : IWorkflowEngine
             nodeInstance.Id,
             node.TaskType,
             now,
-            now.AddDays(3)
+            now.AddDays(BusinessConstants.DefaultTaskDueDays)
         );
         foreach (var userCode in candidates)
         {

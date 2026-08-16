@@ -1,4 +1,5 @@
 using Approval.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Approval.Domain.Entities;
 
@@ -42,6 +43,8 @@ public class WorkflowOutbox
     public DateTime? SentAt { get; set; }
     public DateTime? ProcessingAt { get; set; }
     public string? LockId { get; set; }
+    /// <summary>乐观并发控制令牌</summary>
+    [Timestamp]
     public byte[]? RowVersion { get; set; }
 }
 

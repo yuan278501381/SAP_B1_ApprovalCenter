@@ -7,6 +7,7 @@ using Approval.SapAdapter;
 using Approval.SapAdapter.Adapters;
 using Approval.SapAdapter.ServiceLayer;
 using Approval.Api.Security;
+using Approval.Api.Health;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting.WindowsServices;
@@ -60,6 +61,14 @@ try
         .AddScheme<AuthenticationSchemeOptions, TrustedHeaderAuthenticationHandler>(
             TrustedHeaderAuthenticationHandler.SchemeName, _ => { });
     builder.Services.AddAuthorization();
+    
+    builder.Services.AddAntiforgery(options => 
+    {
+        options.HeaderName = "X-XSRF-TOKEN";
+        options.Cookie.Name = "XSRF-TOKEN";
+        options.Cookie.HttpOnly = false; // 前端需要读取
+    });
+
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new()
@@ -143,7 +152,8 @@ try
     });
 
     builder.Services.AddHealthChecks()
-        .AddDbContextCheck<ApprovalDbContext>("ApprovalDB");
+        .AddDbContextCheck<ApprovalDbContext>("ApprovalDB")
+        .AddCheck("sap_service_layer", new SapServiceLayerHealthCheck(builder.Configuration));
 
     var app = builder.Build();
 
@@ -214,6 +224,7 @@ try
     });
     app.UseCors("ApprovalWeb");
     app.UseAuthorization();
+    app.UseAntiforgery();
     
     // 全局异常拦截中间件 —— 统一脱敏并防止内部堆栈信息泄露到前端
     app.UseExceptionHandler(errorApp =>

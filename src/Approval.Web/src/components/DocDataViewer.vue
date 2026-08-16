@@ -369,6 +369,17 @@ const topPinnedFields = computed(() => {
   return result
 })
 
+// 规范化多行文本换行 (100% 忠实还原 SAP B1 原始回车换行与排版格式)
+const normalizeMultilineText = (text: any): string => {
+  if (text === null || text === undefined) return ''
+  let str = String(text)
+  // 处理字面量转义 \\r\\n 或 \\n
+  str = str.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n')
+  // 统一原生 \r\n 和 \r 为标准 \n
+  str = str.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  return str
+}
+
 // 提取专属多重备注与长文本卡片列表 (0 运行时开销，杜绝内联函数重绘)
 const processedMemoFields = computed(() => {
   const data = parsedData.value
@@ -396,10 +407,11 @@ const processedMemoFields = computed(() => {
       const strVal = String(actualVal).trim()
       if (strVal !== '' && strVal !== '-') {
         const formatted = formatFieldValue(actualKey, actualVal)
+        const displayVal = formatted.isTranslated ? formatted.display : normalizeMultilineText(actualVal)
         result.push({
           key: k,
           label: getFieldLabel(k),
-          value: formatted.display,
+          value: displayVal,
           hasContent: true
         })
       }
@@ -1826,12 +1838,12 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 
 .memo-expanded-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px dashed #fde68a;
-  max-height: 96px;
+  max-height: 110px;
   overflow-y: auto;
 }
 
@@ -1845,35 +1857,40 @@ const openTransferDrawer = (tabKey: string = 'header') => {
 }
 
 .memo-expanded-card {
-  background: #fffbeb;
+  background: #fffdf5;
   border: 1px solid #fef3c7;
+  border-left: 3px solid #f59e0b;
   border-radius: 4px;
-  padding: 4px 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .memo-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .memo-card-name {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #92400e;
 }
 
 .memo-card-field {
-  font-size: 9px;
+  font-size: 9.5px;
   color: #b45309;
 }
 
 .memo-card-content {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #1e293b;
-  line-height: 1.3;
+  line-height: 1.5;
   white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
 }
 
 /* 3. 一体化表格视窗容器 (Flex 1 自适应填满，高度永远贴合屏幕) */
